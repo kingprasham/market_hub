@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze:*)",
+      "Bash(find:*)",
+      "Bash(dir:*)",
+      "Bash(flutter devices:*)",
+      "Bash(flutter emulators:*)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)",
+      "Bash(flutter run:*)",
+      "Bash(flutter pub get:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git rm:*)",
+      "Bash(flutter build:*)",
+      "Bash(powershell -Command \"[System.IO.File]::ReadAllBytes\\(''lib/features/watchlist/widgets/watchlist_dialogs.dart''\\)[5900..6100] | ForEach-Object { ''{0:X2}'' -f $_}\")",
+      "Bash(ls:*)"
+    ]
+  }
+}

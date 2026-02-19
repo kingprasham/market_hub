@@ -1,0 +1,153 @@
+<?php
+// Define path for debug logging
+define('DEBUG_LOG', __DIR__ . '/../uploads/debug_log.txt');
+
+function log_error($message) {
+    try {
+        $timestamp = date('Y-m-d H:i:s');
+        // Use @ to suppress warnings (which become exceptions in config.php)
+        @file_put_contents(DEBUG_LOG, "[$timestamp] $message" . PHP_EOL, FILE_APPEND);
+    } catch (Throwable $e) {
+        // Silently fail if logging fails
+    }
+}
+
+// RESTORED: This is required for database.php and other includes to work!
+define('ADMIN_PANEL', true);
+require_once 'config.php';
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    api_error('Method not allowed', 405);
+}
+
+// Get input data
+try {
+    $data = get_json_input();
+    if (empty($data)) {
+        $data = $_POST; // Fallback to form data
+    }
+    
+    // Log incoming full request for debugging
+    // log_error("Incoming Register Request: " . json_encode($data));
+
+    // Required fields
+    $full_name = trim($data['full_name'] ?? '');
+    $email = trim(strtolower($data['email'] ?? ''));
+    $phone = trim($data['phone'] ?? '');
+    $whatsapp = trim($data['whatsapp'] ?? '');
+    $pin_code = trim($data['pin_code'] ?? '');
+    $plan_id = intval($data['plan_id'] ?? 0);
+    // Get FCM token
+    $fcm_token = trim($data['fcm_token'] ?? '');
+
+    // Validation
+    if (empty($full_name)) {
+        api_error('Full name is required');
+    }
+
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        api_error('Valid email is required');
+    }
+
+    if (empty($phone) || strlen($phone) < 10) {
+        api_error('Valid phone number is required');
+    }
+
+    // Check if email already exists
+    $existing = db_fetch_one("SELECT id, status FROM users WHERE email = ?", 's', [$email]);
+    if ($existing) {
+        if ($existing['status'] === 'rejected') {
+            // Allow re-registration for rejected users
+            db_query("DELETE FROM users WHERE id = ?", 'i', [$existing['id']]);
+        } else {
+            api_error('Email already registered. Please login.');
+        }
+    }
+
+    // Handle visiting card upload (if multipart form)
+    $visiting_card_path = '';
+    if (isset($_FILES['visiting_card']) && $_FILES['visiting_card']['error'] === UPLOAD_ERR_OK) {
+        require_once __DIR__ . '/../includes/upload.php';
+        $upload = upload_file($_FILES['visiting_card'], 'visiting_cards', 'image');
+        if ($upload['success']) {
+            $visiting_card_path = $upload['path'];
+        } else {
+             log_error("Upload failed: " . $upload['error']);
+             // Proceed without card or throw? Let's proceed but log.
+        }
+    }
+
+    // Generate OTP for email verification
+    $otp = generate_otp(6);
+    $otp_expires = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+
+    // Prepare plan_id (null if 0 or not set)
+    $plan_id_value = $plan_id > 0 ? $plan_id : null;
+
+    // Insert user
+    $user_id = db_insert(
+        "INSERT INTO users (full_name, email, phone, whatsapp, plan_id, visiting_card, fcm_token, email_otp, otp_expires_at, status) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')",
+        'ssssisssss',
+        [$full_name, $email, $phone, $whatsapp, $plan_id_value, $visiting_card_path, $fcm_token, $otp, $otp_expires]
+    );
+
+    if (!$user_id) {
+        throw new Exception('Database insert returned no ID.');
+    }
+
+    // Send OTP email
+    $email_subject = "Market Hub - Your Verification Code: $otp";
+    $email_body = "
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset='UTF-8'>
+    </head>
+    <body style='font-family: Arial, sans-serif; padding: 20px;'>
+        <h2 style='color: #333;'>Welcome to Market Hub!</h2>
+        <p>Your verification code is:</p>
+        <div style='background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;'>
+            <h1 style='color: #FF6B35; font-size: 36px; letter-spacing: 8px; margin: 0;'>$otp</h1>
+        </div>
+        <p>This code expires in <strong>15 minutes</strong>.</p>
+        <p style='color: #666; font-size: 12px;'>If you didn't request this, please ignore this email.</p>
+    </body>
+    </html>
+    ";
+
+    // Use the server's domain for From header (required by GoDaddy)
+    $from_email = 'noreply@' . $_SERVER['HTTP_HOST'];
+    $headers = "MIME-Version: 1.0\r\n";
+    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $headers .= "From: Market Hub <$from_email>\r\n";
+    $headers .= "Reply-To: $from_email\r\n";
+    $headers .= "X-Mailer: PHP/" . phpversion();
+
+    $mail_sent = false;
+    try {
+        $mail_sent = mail($email, $email_subject, $email_body, $headers);
+    } catch (Throwable $e) {
+        log_error("Mail sending exception: " . $e->getMessage());
+    }
+
+    // Log email sending result if false but no exception
+    if (!$mail_sent) {
+        log_error("Failed to send OTP email to: $email (mail() returned false)");
+    }
+
+    api_success([
+        'user_id' => $user_id,
+        'email' => $email,
+        'otp_sent' => $mail_sent,
+        // For testing - remove in production!
+        'debug_otp' => $otp
+    ], 'Registration successful. Please verify your email.');
+
+} catch (Exception $e) {
+    log_error("Registration API Exception: " . $e->getMessage());
+    api_error('Registration failed: ' . $e->getMessage(), 400);
+} catch (Throwable $e) {
+    log_error("Registration API Fatal Error: " . $e->getMessage());
+    api_error('An unexpected error occurred: ' . $e->getMessage(), 400);
+}
