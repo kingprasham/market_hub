@@ -36,34 +36,16 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
       ),
       body: Column(
         children: [
-          // Tab Bar
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Obx(() => Row(
-              children: List.generate(
-                controller.tabs.length,
-                (index) => Expanded(child: _buildTabItem(index)),
-              ),
-            )),
-          ),
-
-          // Category Filter (Replaces City Filter for Base Metals)
-          Obx(() {
-            if (controller.selectedTabIndex.value == 0) {
-              return Column(
-                children: [
-                   _buildCategoryFilter(),
-                   if (controller.selectedCategory.value == 'Ferrous')
-                     _buildFerrousSubCategoryFilter(),
-                   if (controller.selectedCategory.value == 'Minor and Ferro')
-                     _buildMinorSubCategoryFilter(),
-                ],
-              );
-            }
-            // Show City Filter only for BME or Legacy Non-Ferrous if needed
-            return _buildCityFilter();
-          }),
+          // Category Filter (Ferrous / Non-Ferrous / Minor and Ferro)
+          Obx(() => Column(
+            children: [
+              _buildCategoryFilter(),
+              if (controller.selectedCategory.value == 'Ferrous')
+                _buildFerrousSubCategoryFilter(),
+              if (controller.selectedCategory.value == 'Minor and Ferro')
+                _buildMinorSubCategoryFilter(),
+            ],
+          )),
 
           // Content
           Expanded(
@@ -74,7 +56,7 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
 
               return AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
-                child: _buildTabContent(),
+                child: _buildBaseMetalContent(),
               );
             }),
           ),
@@ -301,16 +283,7 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
     );
   }
 
-  Widget _buildTabContent() {
-    switch (controller.selectedTabIndex.value) {
-      case 0:
-        return _buildBaseMetalContent();
-      case 1:
-        return _buildBmeContent();
-      default:
-        return const SizedBox.shrink();
-    }
-  }
+  // Tab content is now always base metal content (BME tab removed)
 
   Widget _buildBaseMetalContent() {
     return Obx(() {

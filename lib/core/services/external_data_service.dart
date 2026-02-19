@@ -344,13 +344,15 @@ class ExternalDataService extends GetxService {
 
   /// Fetch Forex Data from Google Sheet
   /// Sheet ID: 1sOs1Hp8aPf6VjpAg9vhpY_kjxgOAgtx0ue9HbDgmvmM
+  /// Sheet GID: 0 (first tab - SBI TT SELL & RBI FBILL data)
   Future<ForexSheetData?> fetchForexFromSheet({
     String sheetId = '1sOs1Hp8aPf6VjpAg9vhpY_kjxgOAgtx0ue9HbDgmvmM',
   }) async {
     try {
-      // Use the CSV export URL
+      // Use the CSV export URL for the first sheet (GID=0)
       final csvUrl = 'https://docs.google.com/spreadsheets/d/$sheetId/gviz/tq?tqx=out:csv&gid=0';
-      
+      debugPrint('📊 Fetching Forex sheet from: $csvUrl');
+
       final response = await _dio.get(
         csvUrl,
         options: Options(
@@ -361,13 +363,34 @@ class ExternalDataService extends GetxService {
 
       if (response.statusCode == 200 && response.data != null) {
         final csvData = response.data.toString();
+        final lines = csvData.split('\n');
+        debugPrint('📊 Forex CSV: ${lines.length} lines received');
+        if (lines.isNotEmpty) debugPrint('📊 Headers row: ${lines[0]}');
+        if (lines.length > 1) debugPrint('📊 First data row: ${lines[1]}');
+        if (lines.length > 2) debugPrint('📊 Second data row: ${lines[2]}');
+
         final List<List<dynamic>> rows = _parseFullCsv(csvData);
+        debugPrint('📊 Parsed ${rows.length} rows from CSV');
+
         final forexData = ForexSheetData.fromCsv(rows);
+        debugPrint('📊 SBI rows: ${forexData.sbiRows.length}, RBI rows: ${forexData.rbiRows.length}');
+
+        if (forexData.sbiRows.isNotEmpty) {
+          final latest = forexData.sbiRows.last;
+          debugPrint('📊 Latest SBI: ${latest.date} USD=${latest.usd} EUR=${latest.eur} GBP=${latest.gbp} JPY=${latest.jpy}');
+        }
+        if (forexData.rbiRows.isNotEmpty) {
+          final latest = forexData.rbiRows.last;
+          debugPrint('📊 Latest RBI: ${latest.date} USD=${latest.usd} EUR=${latest.eur} GBP=${latest.gbp} JPY=${latest.jpy}');
+        }
+
         _forexSheetCache.value = forexData;
         return forexData;
+      } else {
+        debugPrint('📊 Forex sheet fetch failed: status=${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('Error fetching forex from sheet: $e');
+      debugPrint('📊 Error fetching forex from sheet: $e');
     }
     return _forexSheetCache.value;
   }

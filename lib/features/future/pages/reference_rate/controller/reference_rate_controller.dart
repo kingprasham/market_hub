@@ -128,9 +128,8 @@ class ReferenceRateController extends GetxController {
         errorMessage.value = '';
       } else {
         hasError.value = true;
-        errorMessage.value = 'SBI TT Rates: Data source unavailable.\n'
-            'Source: github.com/sahilgupta/sbi-fx-ratekeeper\n\n'
-            'RBI Reference Rates: Market data proxy unavailable.';
+        errorMessage.value = 'Reference Rates Unavailable.\n'
+            'Could not fetch data from Google Sheets.';
         referenceRates.value = [];
         dataSource.value = 'No Data Available';
       }
