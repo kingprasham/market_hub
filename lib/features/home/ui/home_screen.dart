@@ -109,6 +109,14 @@ class HomeScreen extends GetView<HomeController> {
                 child: _buildAdCarousel(),
               ),
 
+              // Starred Watchlist Section (below ads)
+              SliverToBoxAdapter(
+                child: Obx(() {
+                  if (controller.starredItems.isEmpty) return const SizedBox.shrink();
+                  return _buildStarredWatchlistSection();
+                }),
+              ),
+
               // Updates Header
               SliverToBoxAdapter(
                 child: Padding(
@@ -598,6 +606,172 @@ class HomeScreen extends GetView<HomeController> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStarredWatchlistSection() {
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.star, color: Color(0xFFFFC107), size: 18),
+                    const SizedBox(width: 6),
+                    Text('My Watchlist', style: TextStyles.h5),
+                  ],
+                ),
+                TextButton(
+                  onPressed: () => Get.toNamed(AppRoutes.watchlist),
+                  child: Text(
+                    'View All',
+                    style: TextStyles.bodySmall.copyWith(
+                      color: ColorConstants.primaryBlue,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Horizontal scrollable cards
+          SizedBox(
+            height: 100,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              itemCount: controller.starredItems.length,
+              itemBuilder: (context, index) {
+                return Obx(() {
+                  // Obx re-evaluates when starredItems changes, giving live updates
+                  if (index >= controller.starredItems.length) return const SizedBox.shrink();
+                  final item = controller.starredItems[index];
+                  return _buildStarredItemCard(item);
+                });
+              },
+            ),
+          ),
+
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStarredItemCard(dynamic item) {
+    final isPositive = (item.change ?? 0) >= 0;
+    final changeColor = isPositive ? const Color(0xFF1E8449) : const Color(0xFFC0392B);
+    final bgColor = isPositive
+        ? const Color(0xFFF0FFF4)
+        : const Color(0xFFFFF5F5);
+
+    return GestureDetector(
+      onTap: () => Get.toNamed(AppRoutes.watchlist),
+      child: Container(
+        width: 130,
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border.all(
+            color: ColorConstants.borderColor.withOpacity(0.5),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Name + type badge
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    item.symbol,
+                    style: TextStyles.bodySmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: ColorConstants.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: ColorConstants.primaryBlue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    (item.itemType ?? item.type ?? '').toUpperCase().isNotEmpty
+                        ? (item.itemType ?? item.type ?? '').substring(0, ((item.itemType ?? item.type ?? '').length < 4 ? (item.itemType ?? item.type ?? '').length : 4))
+                        : '--',
+                    style: TextStyles.caption.copyWith(
+                      color: ColorConstants.primaryBlue,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 9,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Price
+            Text(
+              item.price != null
+                  ? '${item.currency == 'INR' ? '₹' : '\$'}${Formatters.formatCompactNumber(item.price!)}'
+                  : '--',
+              style: TextStyles.bodyMedium.copyWith(
+                fontWeight: FontWeight.w800,
+                color: ColorConstants.textPrimary,
+              ),
+            ),
+
+            // Change
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                    color: changeColor,
+                    size: 14,
+                  ),
+                  Text(
+                    item.changePercent != null
+                        ? '${item.changePercent!.abs().toStringAsFixed(2)}%'
+                        : '0.00%',
+                    style: TextStyles.caption.copyWith(
+                      color: changeColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

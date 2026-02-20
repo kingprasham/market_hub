@@ -17,7 +17,7 @@ dependencies:
   dio: ^5.7.0
   pretty_dio_logger: ^1.4.0
 
-  # WebSocket for real-time data
+  # WebSocket for real-time data  
   web_socket_channel: ^3.0.1
 
   # Connectivity monitoring

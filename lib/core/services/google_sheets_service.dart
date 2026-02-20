@@ -34,6 +34,10 @@ class GoogleSheetsService extends GetxService {
   final minorSubCategories = <String>[].obs;
   final minorPrices = <String, List<MinorPriceModel>>{}.obs;
 
+  // Futures Data (LME Warehouse & Settlement)
+  final lmeWarehouseData = <LmeWarehouseModel>[].obs;
+  final settlementData = <SettlementModel>[].obs;
+
   // Last update time (used for cache management)
   // ignore: unused_field
   DateTime? _lastUpdate;
@@ -264,6 +268,9 @@ class GoogleSheetsService extends GetxService {
 
     // Fetch and parse Ferrous data
     await fetchFerrousData();
+    
+    // Fetch Futures Data
+    await fetchFuturesData();
   }
 
   /// Fetch a sheet by GID
@@ -1637,6 +1644,243 @@ class GoogleSheetsService extends GetxService {
     _refreshTimer?.cancel();
     super.onClose();
   }
+
+  // Futures Sheet (LME Warehouse & Settlement)
+  static const String futuresSheetId = '1sOs1Hp8aPf6VjpAg9vhpY_kjxgOAgtx0ue9HbDgmvmM';
+  static const String futuresSheetGid = '914913757';
+
+  Future<void> fetchFuturesData() async {
+    // Parse the new sheet directly
+    final sheet = await _fetchSheetByGid(futuresSheetId, 'FUTURES', futuresSheetGid);
+    if (sheet == null) return;
+
+    _parseLmeWarehouseData(sheet);
+    _parseSettlementData(sheet);
+  }
+
+  void _parseLmeWarehouseData(SheetData sheet) {
+    // Parse left side (Cols A-L, indices 0-11)
+    final data = <LmeWarehouseModel>[];
+    
+    // Find header row starting with SYMBOL (usually row 3, index 2)
+    int startRow = -1;
+    for (int i = 0; i < sheet.rows.length; i++) {
+      if (sheet.rows[i].isNotEmpty && sheet.rows[i][0].trim().toUpperCase() == 'SYMBOL') {
+        startRow = i + 1;
+        break;
+      }
+    }
+
+    if (startRow == -1) return;
+
+    for (int i = startRow; i < sheet.rows.length; i++) {
+      final row = sheet.rows[i];
+      if (row.isEmpty) continue;
+      
+      final symbol = row[0].trim();
+      
+      // Stop or skip if not a valid symbol (e.g. CONMET, MARKET HUB, or empty)
+      if (symbol.isEmpty || 
+          symbol.contains('CONMET') || 
+          symbol.contains('MARKET HUB') || 
+          symbol == 'SYMBOL') {
+        continue;
+      }
+
+      // Ensure row has enough columns (up to L = index 11)
+      if (row.length < 12) continue;
+
+      try {
+        data.add(LmeWarehouseModel(
+          symbol: symbol,
+          last: _parseSinglePrice(row[1]) ?? 0.0,
+          inStock: _parseSinglePrice(row[2]) ?? 0.0,
+          outStock: _parseSinglePrice(row[3]) ?? 0.0,
+          change: _parseSinglePrice(row[4]) ?? 0.0,
+          chnPercent: row[5].trim(),
+          cwr: _parseSinglePrice(row[6]) ?? 0.0,
+          cwrChange: _parseSinglePrice(row[7]) ?? 0.0,
+          cwrChnPercent: row[8].trim(),
+          liveWr: _parseSinglePrice(row[9]) ?? 0.0,
+          liveWrChange: _parseSinglePrice(row[10]) ?? 0.0,
+          liveWrChnPercent: row[11].trim(),
+        ));
+      } catch (e) {
+        debugPrint('Error parsing LME row $i: $e');
+      }
+    }
+    
+    lmeWarehouseData.assignAll(data);
+  }
+
+  void _parseSettlementData(SheetData sheet) {
+    // Parse right side (Cols O-T, Indices 14-19)
+    final data = <SettlementModel>[];
+
+    // Find header row for Date/Metal
+    // Looking for "BID" and "ASK" in columns Q/R (16/17) to find start
+    int dataStartRow = -1;
+    
+    // Scan for the row that has 'BID' in column 16 (Q)
+    for (int i = 0; i < sheet.rows.length; i++) {
+      if (sheet.rows[i].length > 16 && sheet.rows[i][16].trim() == 'BID') {
+         dataStartRow = i + 1; // Data starts after BID header row
+         break;
+      }
+    }
+    
+    // Fallback: look for a date format in column 14 (O) if header search fails
+    if (dataStartRow == -1) {
+        for (int i = 0; i < sheet.rows.length; i++) {
+            if (sheet.rows[i].length > 14 && sheet.rows[i][14].contains('.')) {
+                dataStartRow = i; 
+                break;
+            }
+        }
+    }
+    
+    if (dataStartRow == -1) return;
+
+    for (int i = dataStartRow; i < sheet.rows.length; i++) {
+      final row = sheet.rows[i];
+      if (row.length < 20) continue; // Need up to T (19)
+
+      final date = row[14].trim(); // Col O
+      final metal = row[15].trim(); // Col P
+      
+      if (date.isEmpty || metal.isEmpty) continue;
+      // Skip headers if repeated or noise
+      if (date == 'DATE' || metal == 'METAL' || date.contains('SETTELMENT')) continue;
+
+      try {
+        data.add(SettlementModel(
+          date: date,
+          metal: metal,
+          bidCash: _parseSinglePrice(row[16]) ?? 0.0, // Q
+          askCash: _parseSinglePrice(row[17]) ?? 0.0, // R
+          bid3M: _parseSinglePrice(row[18]) ?? 0.0, // S
+          ask3M: _parseSinglePrice(row[19]) ?? 0.0, // T
+        ));
+      } catch (e) {
+         debugPrint('Error parsing Settlement row $i: $e');
+      }
+    }
+
+    settlementData.assignAll(data);
+  }
+
+
+}
+
+class LmeWarehouseModel {
+  final String symbol;
+  final double last;
+  final double inStock;
+  final double outStock;
+  final double change;
+  final String chnPercent;
+  final double cwr;
+  final double cwrChange;
+  final String cwrChnPercent;
+  final double liveWr;
+  final double liveWrChange;
+  final String liveWrChnPercent;
+
+  LmeWarehouseModel({
+    required this.symbol,
+    required this.last,
+    required this.inStock,
+    required this.outStock,
+    required this.change,
+    required this.chnPercent,
+    required this.cwr,
+    required this.cwrChange,
+    required this.cwrChnPercent,
+    required this.liveWr,
+    required this.liveWrChange,
+    required this.liveWrChnPercent,
+  });
+}
+
+class SettlementModel {
+  final String date;
+  final String metal;
+  final double bidCash;
+  final double askCash;
+  final double bid3M;
+  final double ask3M;
+
+  SettlementModel({
+    required this.date,
+    required this.metal,
+    required this.bidCash,
+    required this.askCash,
+    required this.bid3M,
+    required this.ask3M,
+  });
+}
+
+class SheetData {
+  final String name;
+  final List<String> headers;
+  final List<List<String>> rows;
+  final DateTime? lastUpdated;
+
+  SheetData({
+    required this.name,
+    required this.headers,
+    required this.rows,
+    this.lastUpdated,
+  });
+
+  List<Map<String, String>> toMapList() {
+    return rows.map((row) {
+      final map = <String, String>{};
+      for (int i = 0; i < headers.length && i < row.length; i++) {
+        map[headers[i]] = row[i];
+      }
+      return map;
+    }).toList();
+  }
+
+  String? getCell(int rowIndex, String columnName) {
+    if (rowIndex < 0 || rowIndex >= rows.length) return null;
+    final columnIndex = headers.indexOf(columnName);
+    if (columnIndex < 0 || columnIndex >= rows[rowIndex].length) return null;
+    return rows[rowIndex][columnIndex];
+  }
+
+  int get rowCount => rows.length;
+  int get columnCount => headers.length;
+  bool get isEmpty => rows.isEmpty;
+  bool get isNotEmpty => rows.isNotEmpty;
+
+  @override
+  String toString() => 'SheetData(name: $name, rows: ${rows.length}, cols: ${headers.length})';
+}
+
+class BmeRate {
+  final String id;
+  final String metalName;
+  final String purity;
+  final double price;
+  final String unit;
+  final String city;
+  final double change;
+  final double changePercent;
+  final DateTime lastUpdated;
+
+  BmeRate({
+    required this.id,
+    required this.metalName,
+    required this.purity,
+    required this.price,
+    required this.unit,
+    required this.city,
+    required this.change,
+    required this.changePercent,
+    required this.lastUpdated,
+  });
 }
 
 /// Configuration for a COPY sheet column
@@ -1739,44 +1983,4 @@ class PriceHistoryEntry {
     'metal': metal,
     'displayName': displayName,
   };
-}
-
-/// Represents data from a single sheet
-class SheetData {
-  final String name;
-  final List<String> headers;
-  final List<List<String>> rows;
-  final DateTime? lastUpdated;
-
-  SheetData({
-    required this.name,
-    required this.headers,
-    required this.rows,
-    this.lastUpdated,
-  });
-
-  List<Map<String, String>> toMapList() {
-    return rows.map((row) {
-      final map = <String, String>{};
-      for (int i = 0; i < headers.length && i < row.length; i++) {
-        map[headers[i]] = row[i];
-      }
-      return map;
-    }).toList();
-  }
-
-  String? getCell(int rowIndex, String columnName) {
-    if (rowIndex < 0 || rowIndex >= rows.length) return null;
-    final columnIndex = headers.indexOf(columnName);
-    if (columnIndex < 0 || columnIndex >= rows[rowIndex].length) return null;
-    return rows[rowIndex][columnIndex];
-  }
-
-  int get rowCount => rows.length;
-  int get columnCount => headers.length;
-  bool get isEmpty => rows.isEmpty;
-  bool get isNotEmpty => rows.isNotEmpty;
-
-  @override
-  String toString() => 'SheetData(name: $name, rows: ${rows.length}, cols: ${headers.length})';
 }
