@@ -13,6 +13,7 @@ import '../../../data/models/market/spot_price_model.dart';
 import '../../../data/models/market/spot_bulletin_model.dart';
 import '../../../data/models/market/ferrous_price_model.dart';
 import '../../../data/models/market/minor_price_model.dart';
+import '../../../data/models/market/non_ferrous_sheet_data.dart';
 
 class SpotPriceController extends GetxController {
   final selectedTabIndex = 0.obs;
@@ -39,6 +40,11 @@ class SpotPriceController extends GetxController {
   final minorSubCategories = <String>[].obs;
   final selectedMinorSubCategory = ''.obs;
   final minorPrices = <MinorPriceModel>[].obs; // Current selected list
+
+  // Non-Ferrous Data (from FOR APP sheet)
+  final nonFerrousData = Rxn<NonFerrousSheetData>();
+  final nonFerrousCities = <String>[].obs;
+  final selectedNonFerrousCity = 'DELHI'.obs;
 
   final baseMetalPrices = <SpotPriceModel>[].obs;
   final bmePrices = <SpotPriceModel>[].obs;
@@ -231,6 +237,19 @@ class SpotPriceController extends GetxController {
     } catch (e) {
       debugPrint('Error loading Google Sheets data: $e');
       _loadDefaultMetalConfig();
+    }
+
+    // Fetch Non-Ferrous data from FOR APP sheet
+    try {
+      await _sheetsService!.fetchNonFerrousData();
+      final nfData = _sheetsService!.nonFerrousData.value;
+      if (nfData != null) {
+        nonFerrousData.value = nfData;
+        nonFerrousCities.assignAll(nfData.cityNames);
+        debugPrint('Non-Ferrous cities: ${nonFerrousCities.join(', ')}');
+      }
+    } catch (e) {
+      debugPrint('Error loading Non-Ferrous data: $e');
     }
   }
   

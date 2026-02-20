@@ -5,7 +5,8 @@ import '../../../core/constants/text_styles.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../../../data/models/market/spot_bulletin_model.dart';
-import '../../../data/models/market/ferrous_price_model.dart'; // Import Ferrous model
+import '../../../data/models/market/ferrous_price_model.dart';
+import '../../../data/models/market/non_ferrous_sheet_data.dart';
 import '../controller/spot_price_controller.dart';
 import '../../home/ui/widgets/side_menu.dart';
 
@@ -354,40 +355,285 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
   }
 
   Widget _buildNonFerrousList() {
-      // Existing logic encapsulated
-      // Use dynamic metals from the bulletin if available
-      if (controller.availableMetals.isNotEmpty) {
-        return _buildDynamicMetalList();
-      }
-
-      // Legacy fallback
-      final filteredPrices = controller.baseMetalPrices.toList(); 
-      // Note: We removed the city filter for Base Metal tab, so showing all or filtered by 'All' if logic persists
-
-      // Group by location
-      final groupedByLocation = <String, List<dynamic>>{};
-      for (final price in filteredPrices) {
-        final location = price.location;
-        if (!groupedByLocation.containsKey(location)) {
-          groupedByLocation[location] = [];
-        }
-        groupedByLocation[location]!.add(price);
-      }
-
-      return ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          ...groupedByLocation.entries.map((entry) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Obx(() {
+      final nfData = controller.nonFerrousData.value;
+      if (nfData == null || nfData.cities.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildLocationHeader(entry.key),
-              ...entry.value.map((item) => _buildSpotCard(item)),
+              const CircularProgressIndicator(),
               const SizedBox(height: 16),
+              Text('Loading Non-Ferrous Prices...', style: TextStyles.caption),
             ],
-          )),
-          const SizedBox(height: 80),
+          ),
+        );
+      }
+
+      final selectedCity = controller.selectedNonFerrousCity.value;
+      final cityData = nfData.getCityData(selectedCity);
+      final sections = cityData?.sections ?? [];
+
+      return Column(
+        children: [
+          // ── City filter pills ──
+          _buildNonFerrousCityFilter(),
+          // ── Sections list ──
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              children: [
+                if (sections.isNotEmpty)
+                  ...sections.map((section) => _buildCitySection(section)),
+                if (sections.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Center(
+                      child: Text(
+                        'No data available for $selectedCity',
+                        style: TextStyles.bodyMedium.copyWith(
+                          color: ColorConstants.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                // Delhi-only expanded sections (Brass, Gun Metal, Lead, etc.)
+                if (selectedCity.toUpperCase() == 'DELHI' &&
+                    nfData.delhiSections.isNotEmpty)
+                  ...nfData.delhiSections.map((section) => _buildDelhiSection(section)),
+                const SizedBox(height: 80),
+              ],
+            ),
+          ),
         ],
       );
+    });
+  }
+
+  Widget _buildCitySection(CityMetalSection section) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        // Section header (e.g. "Copper", "Brass", "Aluminium")
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [ColorConstants.primaryBlue, ColorConstants.primaryBlue.withOpacity(0.8)],
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            section.sectionName,
+            style: TextStyles.bodyMedium.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ..._buildItemRows(section.items),
+      ],
+    );
+  }
+
+
+  Widget _buildNonFerrousCityFilter() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: SizedBox(
+        height: 36,
+        child: Obx(() {
+          final cities = controller.nonFerrousCities;
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: cities.length,
+            itemBuilder: (context, index) {
+              final city = cities[index];
+              return Obx(() {
+                final isSelected =
+                    controller.selectedNonFerrousCity.value.toUpperCase() ==
+                        city.toUpperCase();
+                return GestureDetector(
+                  onTap: () => controller.selectedNonFerrousCity.value = city,
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? ColorConstants.primaryBlue
+                          : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: isSelected
+                            ? ColorConstants.primaryBlue
+                            : Colors.grey[300]!,
+                      ),
+                    ),
+                    child: Text(
+                      _formatCityName(city),
+                      style: TextStyles.bodySmall.copyWith(
+                        color: isSelected
+                            ? Colors.white
+                            : ColorConstants.textSecondary,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                );
+              });
+            },
+          );
+        }),
+      ),
+    );
+  }
+
+  List<Widget> _buildItemRows(List<MetalItem> items) {
+    return items.map((item) {
+      // Sub-header row (e.g. "COPPER SCRAP (ARM)") — no prices, just a label
+      if (item.isSubHeader) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 4, top: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            item.name,
+            style: TextStyles.bodySmall.copyWith(
+              fontWeight: FontWeight.w600,
+              color: ColorConstants.textSecondary,
+              letterSpacing: 0.3,
+            ),
+          ),
+        );
+      }
+
+      final hasTwoPrices = item.price2 != null;
+      return Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Text(
+                item.name.replaceAll('*', '').replaceAll(':', '').trim(),
+                style: TextStyles.bodyMedium
+                    .copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+            if (hasTwoPrices) ...[
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      item.displayPrice1,
+                      style: TextStyles.bodyLarge.copyWith(
+                        color: ColorConstants.primaryBlue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      item.price1Label,
+                      style: TextStyles.caption.copyWith(
+                        color: ColorConstants.textSecondary,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      item.displayPrice2,
+                      style: TextStyles.bodyLarge.copyWith(
+                        color: const Color(0xFF1E8449),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      item.price2Label ?? 'Sell',
+                      style: TextStyles.caption.copyWith(
+                        color: ColorConstants.textSecondary,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else
+              Expanded(
+                flex: 2,
+                child: Text(
+                  item.displayPrice1,
+                  textAlign: TextAlign.end,
+                  style: TextStyles.bodyLarge.copyWith(
+                    color: ColorConstants.primaryBlue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+
+  Widget _buildDelhiSection(DelhiMetalSection section) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [ColorConstants.primaryBlue, ColorConstants.primaryBlue.withOpacity(0.8)],
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            section.sectionName,
+            style: TextStyles.bodyMedium.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ..._buildItemRows(section.items),
+      ],
+    );
+  }
+
+  String _formatCityName(String city) {
+    // Title case: DELHI -> Delhi
+    if (city.isEmpty) return city;
+    return city[0].toUpperCase() + city.substring(1).toLowerCase();
   }
 
   Widget _buildDynamicMetalList() {

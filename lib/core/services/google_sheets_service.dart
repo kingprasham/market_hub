@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../data/models/market/spot_bulletin_model.dart';
+import '../../data/models/market/non_ferrous_sheet_data.dart';
 import '../../data/models/content/update_model.dart';
 import '../../data/models/market/ferrous_price_model.dart';
 import '../../data/models/market/minor_price_model.dart';
@@ -34,6 +35,9 @@ class GoogleSheetsService extends GetxService {
   final minorSubCategories = <String>[].obs;
   final minorPrices = <String, List<MinorPriceModel>>{}.obs;
 
+  // Non-Ferrous Data
+  final nonFerrousData = Rxn<NonFerrousSheetData>();
+
   // Futures Data (LME Warehouse & Settlement)
   final lmeWarehouseData = <LmeWarehouseModel>[].obs;
   final settlementData = <SettlementModel>[].obs;
@@ -56,6 +60,10 @@ class GoogleSheetsService extends GetxService {
   // TODO: Replace with actual GID for "Sheet5" or "Minor and Ferro" tab
   static const String minorSheetId = '1sOs1Hp8aPf6VjpAg9vhpY_kjxgOAgtx0ue9HbDgmvmM';
   static const String minorSheetGid = '1353908069';
+
+  // Non-Ferrous Data Sheet (FOR APP tab)
+  static const String nonFerrousSheetId = '1VrCzC-sDcri5hO_TWfpHGx3ua7iaScLAtf-CFwQYBsI';
+  static const String nonFerrousSheetGid = '365100361';
 
   // Sheet GIDs from the spreadsheet
   static const Map<String, String> sheetGids = {
@@ -931,6 +939,36 @@ class GoogleSheetsService extends GetxService {
       }
     } catch (e) {
       debugPrint('Error fetching Minor data: $e');
+    }
+  }
+
+  /// Fetch and parse Non-Ferrous data from "FOR APP" sheet
+  Future<void> fetchNonFerrousData() async {
+    try {
+      final url = 'https://docs.google.com/spreadsheets/d/$nonFerrousSheetId/export?format=csv&gid=$nonFerrousSheetGid';
+      debugPrint('Fetching Non-Ferrous data from: $url');
+
+      final response = await _dio.get(
+        url,
+        options: Options(responseType: ResponseType.plain),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final csvData = response.data.toString();
+        final rows = const CsvToListConverter().convert(csvData);
+        if (rows.isNotEmpty) {
+          final parsed = NonFerrousSheetData.fromCsv(rows);
+          nonFerrousData.value = parsed;
+          debugPrint('Non-Ferrous data loaded: ${parsed.cities.length} cities, ${parsed.delhiSections.length} Delhi sections');
+          for (final city in parsed.cities) {
+            debugPrint('  ${city.cityName}: ${city.allItems.length} items');
+          }
+        }
+      } else {
+        debugPrint('Failed to fetch Non-Ferrous data: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching Non-Ferrous data: $e');
     }
   }
 
