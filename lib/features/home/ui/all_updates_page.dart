@@ -1,67 +1,88 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/formatters.dart';
-import '../controller/home_controller.dart';
-import '../../../data/models/content/update_model.dart'; // Ensure correct import
-import '../../../data/models/content/update_model.dart'; // Ensure correct import
-import '../../../app/routes/app_routes.dart';
 import '../../../core/constants/color_constants.dart';
 import '../../../core/constants/text_styles.dart';
+import '../../../data/models/market/price_change_model.dart';
+import '../controller/home_controller.dart';
 
+/// Full-page view of all detected Non-Ferrous price changes.
 class AllUpdatesPage extends StatelessWidget {
   const AllUpdatesPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Find the existing HomeController
     final controller = Get.find<HomeController>();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('All Latest Updates'),
+        title: const Text('Non-Ferrous Price Changes'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0.5,
-        actions: [
-          TextButton.icon(
-            onPressed: () => Get.toNamed(AppRoutes.liveNewsWebView),
-            icon: const Icon(Icons.public, size: 18, color: ColorConstants.primaryBlue),
-            label: const Text(
-              'View Global News',
-              style: TextStyle(color: ColorConstants.primaryBlue, fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       backgroundColor: ColorConstants.backgroundColor,
-      body: Obx(() {
-        if (controller.updates.isEmpty) {
-          return const Center(child: Text('No updates available'));
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: controller.updates.length,
-          itemBuilder: (context, index) {
-            final update = controller.updates[index];
-            return _buildUpdateCard(update);
-          },
-        );
-      }),
+      body: Column(
+        children: [
+          const Divider(height: 1, color: ColorConstants.dividerColor),
+
+          // ─── Change list ────────────────────────────────────────────
+          Expanded(
+            child: Obx(() {
+              final changes = controller.priceChanges
+                      .where((c) => c.category == 'Non-Ferrous')
+                      .toList();
+
+              if (changes.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline_rounded,
+                        size: 48,
+                        color: ColorConstants.textHint.withOpacity(0.5),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No Non-Ferrous changes detected',
+                        style: TextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: ColorConstants.textHint,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Changes will appear as prices update',
+                        style: TextStyles.caption.copyWith(
+                          color: ColorConstants.textHint,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: changes.length,
+                itemBuilder: (context, index) {
+                  return _buildChangeCard(changes[index]);
+                },
+              );
+            }),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildUpdateCard(UpdateModel update) {
+  Widget _buildChangeCard(PriceChange change) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: update.isImportant
-            ? Border.all(color: ColorConstants.primaryOrange.withOpacity(0.5))
-            : null,
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -70,134 +91,83 @@ class AllUpdatesPage extends StatelessWidget {
           ),
         ],
       ),
-      child: InkWell(
-         onTap: () {
-          Get.dialog(
-            AlertDialog(
-              title: Text(update.title),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildDetailRow('Category', update.category ?? 'General'),
-                    const SizedBox(height: 8),
-                    _buildDetailRow('Time', Formatters.timeAgo(update.timestamp)),
-                    const SizedBox(height: 16),
-                    Text(
-                      update.description,
-                      style: TextStyles.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Get.back(),
-                  child: const Text('Close'),
-                ),
-              ],
+      child: Row(
+        children: [
+          // Category icon (Non-Ferrous icon)
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: ColorConstants.primaryOrange.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(10),
             ),
-          );
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+            child: const Icon(
+              Icons.diamond_outlined,
+              size: 18,
+              color: ColorConstants.primaryOrange,
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Name + city
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getCategoryColor(update.category ?? 'General').withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
+                Text(
+                  change.name,
+                  style: TextStyles.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: ColorConstants.textPrimary,
                   ),
-                  child: Text(
-                    update.category ?? 'General',
-                    style: TextStyles.caption.copyWith(
-                      color: _getCategoryColor(update.category ?? 'General'),
-                      fontWeight: FontWeight.w600,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                if (change.city.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: ColorConstants.primaryOrange.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      change.city,
+                      style: TextStyles.labelSmall.copyWith(
+                        color: ColorConstants.primaryOrange,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 9,
+                      ),
                     ),
                   ),
-                ),
-                if (update.isImportant) ...[
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.priority_high,
-                    color: ColorConstants.primaryOrange,
-                    size: 18,
-                  ),
-                ],
-                const Spacer(),
-                Text(
-                  Formatters.timeAgo(update.timestamp),
-                  style: TextStyles.caption.copyWith(
-                    color: ColorConstants.textSecondary,
-                  ),
-                ),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              update.title,
-              style: TextStyles.bodyLarge.copyWith(
-                fontWeight: FontWeight.w600,
+          ),
+
+          // Old → New price
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                change.newPrice,
+                style: TextStyles.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: ColorConstants.textPrimary,
+                  fontSize: 14,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              update.description,
-              style: TextStyles.bodySmall.copyWith(
-                color: ColorConstants.textSecondary,
+              Text(
+                change.oldPrice,
+                style: TextStyles.labelSmall.copyWith(
+                  color: ColorConstants.textHint,
+                  fontSize: 10,
+                  decoration: TextDecoration.lineThrough,
+                ),
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
-
-  Color _getCategoryColor(String category) {
-    switch (category) {
-      case 'Market Update':
-        return ColorConstants.primaryBlue;
-      case 'Exchange News':
-        return ColorConstants.primaryOrange;
-      case 'FX Update':
-        return Colors.purple;
-      case 'Spot Price':
-        return Colors.teal;
-      case 'Futures':
-        return Colors.indigo;
-      default:
-        return ColorConstants.textSecondary;
-    }
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(
-            '$label:',
-            style: TextStyles.bodySmall.copyWith(
-              color: ColorConstants.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyles.bodySmall.copyWith(
-              color: ColorConstants.textPrimary,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

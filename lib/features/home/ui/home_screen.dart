@@ -3,15 +3,12 @@ import 'package:get/get.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../core/constants/color_constants.dart';
 import '../../../core/constants/text_styles.dart';
-import '../../../core/storage/local_storage.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../data/models/market/price_change_model.dart';
 import '../../../shared/widgets/loaders/shimmer_loader.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../controller/home_controller.dart';
 import '../data/ad_data.dart';
-import '../data/market_update_data.dart';
 import 'widgets/side_menu.dart';
-import 'widgets/market_report_dialog.dart';
 
 class HomeScreen extends GetView<HomeController> {
   const HomeScreen({super.key});
@@ -117,78 +114,9 @@ class HomeScreen extends GetView<HomeController> {
                 }),
               ),
 
-              // Updates Header
+              // ─── Live Prices Section ──────────────────────────────────────────
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Latest Updates',
-                        style: TextStyles.h5,
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Get.toNamed(AppRoutes.allUpdates);
-                        },
-                        child: Text(
-                          'View All',
-                          style: TextStyles.bodySmall.copyWith(
-                            color: ColorConstants.primaryBlue,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Updates List
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: controller.updates.isEmpty
-                    ? SliverToBoxAdapter(
-                        child: Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.article_outlined,
-                                size: 48,
-                                color: ColorConstants.textSecondary.withOpacity(0.5),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'No updates available',
-                                style: TextStyles.bodyMedium.copyWith(
-                                  color: ColorConstants.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Pull down to refresh',
-                                style: TextStyles.caption.copyWith(
-                                  color: ColorConstants.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final update = controller.updates[index];
-                            return _buildUpdateCard(update);
-                          },
-                          childCount: controller.updates.length > 3 ? 3 : controller.updates.length,
-                        ),
-                      ),
+                child: _buildLivePricesSection(),
               ),
 
               const SliverToBoxAdapter(
@@ -398,187 +326,290 @@ class HomeScreen extends GetView<HomeController> {
     );
   }
 
+  // ─── Live Prices Section (shows only changed prices) ──────────────────────
 
 
-
-
-  Widget _buildSectionHeader(String title, {VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              title,
-              style: TextStyles.h5.copyWith(fontSize: 18),
+  Widget _buildLivePricesSection() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ─── Gradient header ────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  ColorConstants.primaryBlue.withOpacity(0.08),
+                  ColorConstants.primaryOrange.withOpacity(0.06),
+                ],
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             ),
-            if (onTap != null)
-              const Icon(Icons.arrow_forward_ios, size: 16, color: ColorConstants.textSecondary),
-          ],
-        ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: ColorConstants.blueGradient,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.trending_up_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Non-Ferrous Updates', style: TextStyles.h5),
+                      Text(
+                        'Metals with changed prices today',
+                        style: TextStyles.caption.copyWith(
+                          color: ColorConstants.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildPulseDot(),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1, color: ColorConstants.dividerColor),
+
+          // ─── Changed price rows (Non-Ferrous Only) ──────────────────
+          Obx(() {
+            final changes = controller.priceChanges
+                    .where((c) => c.category == 'Non-Ferrous')
+                    .toList();
+
+            if (changes.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline_rounded,
+                        size: 36,
+                        color: ColorConstants.textHint.withOpacity(0.5),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No price changes yet',
+                        style: TextStyles.bodySmall.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: ColorConstants.textHint,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Non-Ferrous prices will appear here',
+                        style: TextStyles.caption.copyWith(
+                          color: ColorConstants.textHint,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return Column(
+              children: [
+                ...changes.take(10).map((c) => _buildChangeRow(c)),
+              ],
+            );
+          }),
+
+          // ─── View All CTA ─────────────────────────────────────────────
+          InkWell(
+            onTap: () => Get.toNamed(AppRoutes.allUpdates),
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: ColorConstants.primaryBlue.withOpacity(0.04),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'View All Changes',
+                    style: TextStyles.bodySmall.copyWith(
+                      color: ColorConstants.primaryBlue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.arrow_forward_ios, size: 12, color: ColorConstants.primaryBlue),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildUpdateCard(dynamic update) {
+  /// Row for a single price change — shows old → new, city badge, category.
+  Widget _buildChangeRow(PriceChange change) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: update.isImportant
-            ? Border.all(color: ColorConstants.primaryOrange.withOpacity(0.5))
-            : null,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: ColorConstants.dividerColor, width: 0.5)),
       ),
-      child: InkWell(
-        onTap: () {
-          // Check if this is the special Copper Report
-          if (update.title == copperReport.title) {
-            Get.dialog(MarketReportDialog(report: copperReport));
-            return;
-          }
+      child: Row(
+        children: [
+          // Category icon
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: _categoryColor(change.category).withOpacity(0.10),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              _categoryIcon(change.category),
+              size: 16,
+              color: _categoryColor(change.category),
+            ),
+          ),
+          const SizedBox(width: 12),
 
-          Get.dialog(
-            AlertDialog(
-              title: Text(update.title),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildDetailRow('Category', update.category),
-                    const SizedBox(height: 8),
-                    _buildDetailRow('Time', Formatters.timeAgo(update.timestamp)),
-                    const SizedBox(height: 16),
-                    Text(
-                      update.description,
-                      style: TextStyles.bodyMedium,
+          // Name + city
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  change.name,
+                  style: TextStyles.bodySmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: ColorConstants.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (change.city.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: ColorConstants.primaryOrange.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Get.back(),
-                  child: const Text('Close'),
-                ),
+                    child: Text(
+                      change.city,
+                      style: TextStyles.labelSmall.copyWith(
+                        color: ColorConstants.primaryOrange,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ),
               ],
             ),
-          );
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getCategoryColor(update.category).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  update.category,
-                  style: TextStyles.caption.copyWith(
-                    color: _getCategoryColor(update.category),
-                    fontWeight: FontWeight.w600,
-                  ),
+          ),
+
+          // Old → New price
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                change.newPrice,
+                style: TextStyles.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: ColorConstants.textPrimary,
+                  fontSize: 13,
                 ),
               ),
-              if (update.isImportant) ...[
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.priority_high,
-                  color: ColorConstants.primaryOrange,
-                  size: 18,
-                ),
-              ],
-              const Spacer(),
               Text(
-                Formatters.timeAgo(update.timestamp),
-                style: TextStyles.caption.copyWith(
-                  color: ColorConstants.textSecondary,
+                change.oldPrice,
+                style: TextStyles.labelSmall.copyWith(
+                  color: ColorConstants.textHint,
+                  fontSize: 9,
+                  decoration: TextDecoration.lineThrough,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            update.title,
-            style: TextStyles.bodyLarge.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            update.description,
-            style: TextStyles.bodySmall.copyWith(
-              color: ColorConstants.textSecondary,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
 
+  /// Tiny animated green dot indicating live data.
+  Widget _buildPulseDot() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.4, end: 1.0),
+      duration: const Duration(milliseconds: 1200),
+      builder: (context, opac, child) {
+        return Opacity(
+          opacity: opac,
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: ColorConstants.positiveGreen,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: ColorConstants.positiveGreen.withOpacity(0.5),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-
-
-  Color _getCategoryColor(String category) {
+  Color _categoryColor(String category) {
     switch (category) {
-      case 'Market Update':
-        return ColorConstants.primaryBlue;
-      case 'Exchange News':
-        return ColorConstants.primaryOrange;
-      case 'FX Update':
-        return Colors.purple;
-      case 'Spot Price':
-        return Colors.teal;
-      case 'Futures':
-        return Colors.indigo;
-      default:
-        return ColorConstants.textSecondary;
+      case 'Ferrous': return ColorConstants.primaryBlue;
+      case 'Non-Ferrous': return ColorConstants.primaryOrange;
+      case 'Minor Metals': return Colors.teal;
+      case 'Bullion': return Colors.amber.shade700;
+      default: return ColorConstants.textSecondary;
     }
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(
-            '$label:',
-            style: TextStyles.bodySmall.copyWith(
-              color: ColorConstants.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyles.bodySmall.copyWith(
-              color: ColorConstants.textPrimary,
-            ),
-          ),
-        ),
-      ],
-    );
+  IconData _categoryIcon(String category) {
+    switch (category) {
+      case 'Ferrous': return Icons.factory_outlined;
+      case 'Non-Ferrous': return Icons.diamond_outlined;
+      case 'Minor Metals': return Icons.science_outlined;
+      case 'Bullion': return Icons.monetization_on_outlined;
+      default: return Icons.bar_chart_rounded;
+    }
   }
+
+
   Widget _buildHeaderAction({
     required IconData icon,
     required String label,

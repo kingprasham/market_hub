@@ -1,24 +1,20 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../core/network/api_client.dart';
 import '../../../core/network/websocket_service.dart';
-import '../../../core/constants/api_constants.dart';
 import '../../../core/storage/local_storage.dart';
 import '../../../core/services/external_data_service.dart';
 import '../../../core/services/google_sheets_service.dart';
 import '../../../core/services/watchlist_service.dart';
 import '../../../core/services/news_api_service.dart';
 import '../../../core/services/rss_news_service.dart';
-import '../../../core/services/admin_api_service.dart';
-import '../../../data/models/content/update_model.dart';
 import '../../../data/models/content/news_model.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/models/watchlist/watchlist_item_model.dart';
+import '../../../data/models/market/price_change_model.dart';
 import '../../../app/routes/app_routes.dart';
 
 class HomeController extends GetxController {
-  final updates = <UpdateModel>[].obs;
   final isLoading = true.obs;
   final isRefreshing = false.obs;
   final user = Rxn<UserModel>();
@@ -43,12 +39,27 @@ class HomeController extends GetxController {
   // Google Sheets Data
   final sheetsData = <String, SheetData>{}.obs;
 
+  // ─── Price Change Tracking (Non-Ferrous Only) ───────────────────────────
+  /// Detected price changes (only Non-Ferrous metals that actually changed).
+  final priceChanges = <PriceChange>[].obs;
+
+  /// Baseline snapshot: key → formatted price string.
+  final Map<String, String> _priceSnapshot = {};
+
+  /// Whether the very first load has been captured as the baseline.
+  bool _baselineCaptured = false;
+
+  /// Direct reactive getters — identical data the Spot tab displays.
+  GoogleSheetsService? _sheetsServiceRef;
+
+  /// Public accessor for the Live Prices section in the UI.
+  GoogleSheetsService? get sheetsServiceRef => _sheetsServiceRef;
+
   StreamSubscription? _wsSubscription;
   WatchlistService? _watchlistService;
   NewsApiService? _newsApiService;
   RssNewsService? _rssNewsService;
   Timer? _autoRefreshTimer;
-  int _previousUpdateCount = 0;
 
   // Ad carousel autoscroll
   late final PageController adPageController;
@@ -64,9 +75,169 @@ class HomeController extends GetxController {
     loadUser();
     _initWatchlistService();
     _initNewsService();
+    _loadPriceSnapshots();
+    _loadPriceChanges();
+    _initSheetsRef();
     _loadAllData();
     _subscribeToWebSocket();
     _startAutoRefresh();
+  }
+
+  /// Cache a reference to GoogleSheetsService and start change tracking.
+  void _initSheetsRef() {
+    try {
+      _sheetsServiceRef = Get.find<GoogleSheetsService>();
+      _initPriceTracking();
+    } catch (e) {
+      debugPrint('[Home] GoogleSheetsService not available for live prices: $e');
+    }
+  }
+
+  // ─── Change Tracking (Non-Ferrous Only) ─────────────────────────────────
+
+  /// Hook `ever()` listener on Non-Ferrous data source.
+  void _initPriceTracking() {
+    final svc = _sheetsServiceRef;
+    if (svc == null) return;
+
+    // We only track Non-Ferrous changes as requested.
+    ever(svc.nonFerrousData, (_) => _scanForChanges());
+  }
+
+  /// Build a flat key→price map from current Non-Ferrous data, then compare.
+  void _scanForChanges() {
+    final svc = _sheetsServiceRef;
+    final nfData = svc?.nonFerrousData.value;
+    if (nfData == null) return;
+
+    final current = <String, _PriceEntry>{};
+
+    // ── Scan only Non-Ferrous ──
+    for (final city in nfData.cities) {
+      for (final section in city.sections) {
+        for (final item in section.items) {
+          if (item.isSubHeader) continue;
+          final p1 = item.price1;
+          final p2 = item.price2;
+          final cp = p1 ?? p2;
+          if (cp == null || cp <= 0) continue;
+
+          final key = 'NonFerrous|${section.sectionName}|${item.name}|${city.cityName}';
+          String priceStr;
+          if (p1 != null && p2 != null) {
+            priceStr = '${p1.toStringAsFixed(0)}/${p2.toStringAsFixed(0)}';
+          } else {
+            priceStr = cp.toStringAsFixed(0);
+          }
+
+          current[key] = _PriceEntry(
+            name: '${section.sectionName} – ${item.name}',
+            city: city.cityName,
+            category: 'Non-Ferrous',
+            price: priceStr,
+          );
+        }
+      }
+    }
+
+    // ── First load → capture baseline ──
+    if (!_baselineCaptured) {
+      _baselineCaptured = true;
+      for (final e in current.entries) {
+        _priceSnapshot[e.key] = e.value.price;
+      }
+      debugPrint('[PriceTracker] Non-Ferrous baseline captured (${_priceSnapshot.length} entries)');
+      _savePriceSnapshots();
+      return;
+    }
+
+    // ── Compare to snapshot and detect changes ──
+    final now = DateTime.now();
+    final newChanges = <PriceChange>[];
+
+    for (final e in current.entries) {
+      final oldPrice = _priceSnapshot[e.key];
+      if (oldPrice != null && oldPrice != e.value.price) {
+        newChanges.add(PriceChange(
+          key: e.key,
+          name: e.value.name,
+          city: e.value.city,
+          category: e.value.category,
+          oldPrice: '₹$oldPrice',
+          newPrice: '₹${e.value.price}',
+          detectedAt: now,
+        ));
+      }
+      // Update snapshot to the latest value
+      _priceSnapshot[e.key] = e.value.price;
+    }
+
+    if (newChanges.isNotEmpty) {
+      // Prepend new changes and deduplicate by key (keep latest)
+      final merged = [...newChanges, ...priceChanges];
+      final seen = <String>{};
+      final deduped = merged.where((c) {
+        if (seen.contains(c.key)) return false;
+        seen.add(c.key);
+        return true;
+      }).toList();
+      priceChanges.assignAll(deduped);
+      debugPrint('[PriceTracker] ${newChanges.length} Non-Ferrous change(s) detected');
+      
+      _savePriceChanges();
+    }
+    
+    // Always persist latest snapshot state
+    _savePriceSnapshots();
+  }
+
+  /// Load persisted snapshots from storage.
+  void _loadPriceSnapshots() {
+    try {
+      final cached = LocalStorage.getCachedData('price_snapshots');
+      if (cached != null && cached is Map) {
+        _priceSnapshot.addAll(Map<String, String>.from(cached));
+        _baselineCaptured = true;
+        debugPrint('[PriceTracker] Loaded ${_priceSnapshot.length} persisted snapshots');
+      }
+    } catch (e) {
+      debugPrint('[PriceTracker] Error loading snapshots: $e');
+    }
+  }
+
+  /// Persist current snapshots to storage.
+  void _savePriceSnapshots() {
+    try {
+      LocalStorage.cacheData('price_snapshots', _priceSnapshot);
+    } catch (e) {
+      debugPrint('[PriceTracker] Error saving snapshots: $e');
+    }
+  }
+
+  /// Load persisted changes from storage.
+  void _loadPriceChanges() {
+    try {
+      final cached = LocalStorage.getCachedData('nf_price_changes');
+      if (cached != null && cached is List) {
+        final loaded = cached
+            .map((json) => PriceChange.fromJson(Map<String, dynamic>.from(json)))
+            .toList();
+        priceChanges.assignAll(loaded);
+        debugPrint('[PriceTracker] Loaded ${priceChanges.length} persisted changes');
+      }
+    } catch (e) {
+      debugPrint('[PriceTracker] Error loading price changes: $e');
+    }
+  }
+
+  /// Persist current changes to storage.
+  void _savePriceChanges() {
+    try {
+      final data = priceChanges.map((c) => c.toJson()).toList();
+      LocalStorage.cacheData('nf_price_changes', data);
+    } catch (e) {
+      debugPrint('[PriceTracker] Error saving price changes: $e');
+    }
   }
 
   void _startAdAutoScroll() {
@@ -128,18 +299,16 @@ class HomeController extends GetxController {
   void _initWatchlistService() {
     try {
       _watchlistService = Get.find<WatchlistService>();
-      // Listen for changes in starred items
-      ever(_watchlistService!.starredItemIds, (_) {
-        _updateStarredItems();
-      });
-      ever(_watchlistService!.watchlistItems, (_) {
-        _updateStarredItems();
-      });
+      ever(_watchlistService!.starredItemIds, (_) => _updateStarredItems());
+      ever(_watchlistService!.watchlistItems, (_) => _updateStarredItems());
       _updateStarredItems();
     } catch (e) {
       // WatchlistService not available
     }
   }
+
+  // _initSpotUpdates and _mergeSpotUpdates removed — live data is read
+  // directly from GoogleSheetsService reactive observables.
 
   void _updateStarredItems() {
     if (_watchlistService != null) {
@@ -155,7 +324,6 @@ class HomeController extends GetxController {
     isLoading.value = true;
 
     await Future.wait([
-      fetchUpdates(),
       _loadExternalData(),
       _loadGoogleSheetsData(),
     ]);
@@ -193,6 +361,10 @@ class HomeController extends GetxController {
   Future<void> _loadGoogleSheetsData() async {
     try {
       final sheetsService = Get.find<GoogleSheetsService>();
+      
+      // Explicitly trigger a fresh fetch to ensure we have latest data
+      await sheetsService.fetchAllSheets();
+      
       sheetsData.assignAll(sheetsService.allSheets);
 
       // Update major indices and market movers from spot bulletin
@@ -200,13 +372,6 @@ class HomeController extends GetxController {
 
       // Also try RATES sheet if available
       _updateIndicesFromSheets();
-
-      // Load latest updates from news
-      /*
-      if (sheetsService.allIndiaNews.isNotEmpty) {
-        updates.assignAll(sheetsService.allIndiaNews);
-      }
-      */
     } catch (e) {
       debugPrint('Error loading Google Sheets data: $e');
     }
@@ -444,170 +609,14 @@ class HomeController extends GetxController {
     }
   }
 
-  Future<void> fetchUpdates({bool silent = false}) async {
-    try {
-      // OVERRIDE: Hardcoded market update as requested
-      //Replaces existing fetched data
-      updates.assignAll([
-        UpdateModel(
-          id: 'copper_update_${DateTime.now().millisecondsSinceEpoch}',
-          title: 'ALL INDIA COPPER PRICE UPDATE',
-          description: '''MARKET HUB
-
-ALL INDIA COPPER PRICE UPDATE
-
-Reference Rates Only
-
-BHIWADI MARKET 
-CCR ROD : 1215+
-SCRAP (ARM)
-CASH: 1130+
-CREDIT: 1132+
-==========================
-
-DELHI 
-
-COPPER ROD
-(8 MM / 1.6MM)
-CC ROD: 1240+/1330/(1.6 MM: 1340)
-CCR ROD: 1215+/1285/(1.6 MM: 1295)
-SUPER D: 1193+/1258/(1.6 MM: 1272)
-ZERO: 1183+/1248/(1.6 MM: 1262)
-==========================
-
-MUMBAI
-COPPER ARM (CREDIT): 1155+
-COPPER UTENSILS SCRAP: 1075+
-JALI PATTI/HEAVY SCRAP : 1165+
-LAL PATTI/COPPER CABLE : 1175+
-==========================
-
-AHMEDABAD
-(PLUS GST RATE)
-COPPER CCR: 1180
-COPPER CCR 1.6 MM: 1190
-BUNCH: 1212
-TUKADI: 1142
-SCRAP (ARM): 1105
-==========================
-
-PUNE
-SCRAP (ARM) : 1145
-DELHI RASA: 1045
-TAMBA BARTAN: 1055
-==========================
-
-HYDERABAD
-CC ROD: 1312+/1361
-SUPER D: 1195+/1249
-ARM: 1178 
-==========================
-
-NAGPUR
-ARM : 1175
-BARIK: 1117
-KALYA: 1097
-==========================
-
-CHENNAI
-ARM 1125
-LAAL 1135
-SUPER 1050
-==========================
-
-KOLKATA
-ARM 1170
-JALA 1180
-SUPER 1122
-==========================
-
-RAIPUR
-ARM 1175
-JALA: 1185
-SUPER: 1125
-
-Reference Rates Only
-
-MARKET HUB : 86240-72648, 0250-2469270''',
-          category: 'Market Update',
-          isImportant: true,
-          createdAt: DateTime.now(),
-        ),
-      ]);
-      _previousUpdateCount = updates.length;
-      return;
-
-      /*
-      // Fetch combined updates from Admin Dashboard API (news, circulars, home updates)
-      final adminApi = Get.find<AdminApiService>();
-      final latestUpdates = await adminApi.getLatestUpdates(limit: 20);
-
-      if (latestUpdates.isNotEmpty) {
-        final updateList = latestUpdates.map((json) => UpdateModel(
-          id: json['id']?.toString() ?? '',
-          title: json['title'] ?? '',
-          description: json['description'] ?? '',
-          imageUrl: json['imageUrl'],
-          pdfUrl: json['pdfUrl'],
-          category: json['category'] ?? json['contentType'] ?? 'Update',
-          createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-          isImportant: json['isImportant'] ?? false,
-          targetPlanIds: json['targetPlans'] != null
-              ? List<String>.from(json['targetPlans'])
-              : const ['all'],
-        )).toList();
-
-        // Check if there are new updates
-        final currentCount = updateList.length;
-        final hasNewUpdates = _previousUpdateCount > 0 && currentCount > _previousUpdateCount;
-        final newItemsCount = currentCount - _previousUpdateCount;
-
-        updates.assignAll(updateList);
-
-
-        debugPrint('Loaded $currentCount combined updates from admin API');
-
-        // Show notification if new content is available (but not on initial load or silent refresh)
-        if (hasNewUpdates && !silent) {
-          Get.snackbar(
-            'New Content Available',
-            '$newItemsCount new update(s) added',
-            snackPosition: SnackPosition.TOP,
-            duration: const Duration(seconds: 3),
-            backgroundColor: Get.theme.colorScheme.primary,
-            colorText: Get.theme.colorScheme.onPrimary,
-          );
-        }
-
-        _previousUpdateCount = currentCount;
-        return;
-      }
-      */
-
-      // Fallback to Google Sheets
-      final sheetsService = Get.find<GoogleSheetsService>();
-      if (sheetsService.allIndiaNews.isNotEmpty) {
-         updates.assignAll(sheetsService.allIndiaNews);
-         _previousUpdateCount = updates.length;
-      }
-    } catch (e) {
-      debugPrint('Error fetching updates: $e');
-      // Fallback to Google Sheets on error
-      try {
-        final sheetsService = Get.find<GoogleSheetsService>();
-        if (sheetsService.allIndiaNews.isNotEmpty) {
-           updates.assignAll(sheetsService.allIndiaNews);
-           _previousUpdateCount = updates.length;
-        }
-      } catch (_) {}
-    }
-  }
+  // fetchUpdates() removed — live prices are read directly from
+  // GoogleSheetsService reactive observables.
 
   void _startAutoRefresh() {
     // Auto-refresh every 3 minutes
     _autoRefreshTimer = Timer.periodic(const Duration(minutes: 3), (timer) {
       debugPrint('Auto-refreshing content...');
-      fetchUpdates(silent: false); // Show toast if new content
+      _loadGoogleSheetsData();
     });
   }
 
@@ -615,7 +624,6 @@ MARKET HUB : 86240-72648, 0250-2469270''',
     isRefreshing.value = true;
 
     await Future.wait([
-      fetchUpdates(),
       _loadExternalData(),
       _loadGoogleSheetsData(),
     ]);
@@ -635,4 +643,19 @@ MARKET HUB : 86240-72648, 0250-2469270''',
     adPageController.dispose();
     super.onClose();
   }
+}
+
+/// Lightweight helper used by _scanForChanges to hold current-state entries.
+class _PriceEntry {
+  final String name;
+  final String city;
+  final String category;
+  final String price;
+
+  const _PriceEntry({
+    required this.name,
+    required this.city,
+    required this.category,
+    required this.price,
+  });
 }

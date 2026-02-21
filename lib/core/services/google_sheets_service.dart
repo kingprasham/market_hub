@@ -277,6 +277,12 @@ class GoogleSheetsService extends GetxService {
     // Fetch and parse Ferrous data
     await fetchFerrousData();
     
+    // Fetch and parse Non-Ferrous data
+    await fetchNonFerrousData();
+
+    // Fetch and parse Minor data
+    await fetchMinorData();
+
     // Fetch Futures Data
     await fetchFuturesData();
   }
@@ -957,7 +963,20 @@ class GoogleSheetsService extends GetxService {
         final csvData = response.data.toString();
         final rows = const CsvToListConverter().convert(csvData);
         if (rows.isNotEmpty) {
-          final parsed = NonFerrousSheetData.fromCsv(rows);
+          DateTime fetchedAt = DateTime.now();
+          // Try to find a date string in the first few rows (A1-A5 or similar)
+          for (int i = 0; i < 5 && i < rows.length; i++) {
+            for (final cell in rows[i]) {
+              final str = cell.toString().trim();
+              if (_looksLikeDate(str)) {
+                fetchedAt = _parseDate(str);
+                debugPrint('Found Non-Ferrous sheet date: $fetchedAt');
+                break;
+              }
+            }
+          }
+
+          final parsed = NonFerrousSheetData.fromCsv(rows, fetchedAt: fetchedAt);
           nonFerrousData.value = parsed;
           debugPrint('Non-Ferrous data loaded: ${parsed.cities.length} cities, ${parsed.delhiSections.length} Delhi sections');
           for (final city in parsed.cities) {
@@ -1086,11 +1105,20 @@ class GoogleSheetsService extends GetxService {
                 if (city.isNotEmpty && priceStr.isNotEmpty) {
                     final price = _parseSinglePrice(priceStr);
                     if (price != null) {
+                        // Check if there's a date column (usually 5th column in the block)
+                        DateTime lastUpdated = DateTime.now();
+                        if (startIndex + 4 < row.length) {
+                            final dateStr = row[startIndex + 4].trim();
+                            if (_looksLikeDate(dateStr)) {
+                                lastUpdated = _parseDate(dateStr);
+                            }
+                        }
+
                         prices.add(FerrousPriceModel(
                             category: category,
                             city: city,
                             price: price,
-                            lastUpdated: DateTime.now(),
+                            lastUpdated: lastUpdated,
                         ));
                     }
                 }
@@ -1168,7 +1196,19 @@ class GoogleSheetsService extends GetxService {
     }
 
     final rates = <BmeRate>[];
-    final now = DateTime.now();
+    DateTime lastUpdated = DateTime.now();
+
+    // Try to find a date string in the first few rows
+    for (int i = 0; i < 5 && i < sheet.rows.length; i++) {
+      for (final cell in sheet.rows[i]) {
+        final str = cell.toString().trim();
+        if (_looksLikeDate(str)) {
+          lastUpdated = _parseDate(str);
+          debugPrint('Found BME sheet date: $lastUpdated');
+          break;
+        }
+      }
+    }
 
     // Try to identify city columns from headers
     final cityColumns = <String, List<int>>{}; // city -> list of column indices
@@ -1250,7 +1290,7 @@ class GoogleSheetsService extends GetxService {
 
                 if (price != null && price > 0) {
                   final rate = BmeRate(
-                    id: '${metalName.toLowerCase()}_${purity}_${city.toLowerCase()}_${now.millisecondsSinceEpoch}_$rowIndex',
+                    id: '${metalName.toLowerCase()}_${purity}_${city.toLowerCase()}_${lastUpdated.millisecondsSinceEpoch}_$rowIndex',
                     metalName: metalName,
                     purity: purity,
                     price: price,
@@ -1258,7 +1298,7 @@ class GoogleSheetsService extends GetxService {
                     city: city,
                     change: 0.0,
                     changePercent: 0.0,
-                    lastUpdated: now,
+                    lastUpdated: lastUpdated,
                   );
                   rates.add(rate);
                   debugPrint('    ✅ $city: ₹$price ${rate.unit}');
@@ -1277,7 +1317,7 @@ class GoogleSheetsService extends GetxService {
             if (price != null && price > 0) {
               final city = defaultCities[cityIndex];
               final rate = BmeRate(
-                id: '${metalName.toLowerCase()}_${purity}_${city.toLowerCase()}_${now.millisecondsSinceEpoch}_$rowIndex',
+                id: '${metalName.toLowerCase()}_${purity}_${city.toLowerCase()}_${lastUpdated.millisecondsSinceEpoch}_$rowIndex',
                 metalName: metalName,
                 purity: purity,
                 price: price,
@@ -1285,7 +1325,7 @@ class GoogleSheetsService extends GetxService {
                 city: city,
                 change: 0.0,
                 changePercent: 0.0,
-                lastUpdated: now,
+                lastUpdated: lastUpdated,
               );
               rates.add(rate);
               debugPrint('    ✅ $city: ₹$price ${rate.unit}');

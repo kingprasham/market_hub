@@ -8,10 +8,12 @@
 class NonFerrousSheetData {
   final List<CityData> cities;
   final List<DelhiMetalSection> delhiSections;
+  final DateTime fetchedAt;
 
   const NonFerrousSheetData({
     required this.cities,
     required this.delhiSections,
+    required this.fetchedAt,
   });
 
   /// Get list of city names (for filter pills)
@@ -29,9 +31,13 @@ class NonFerrousSheetData {
   }
 
   /// Parse the CSV from the FOR APP sheet
-  factory NonFerrousSheetData.fromCsv(List<List<dynamic>> rows) {
+  factory NonFerrousSheetData.fromCsv(List<List<dynamic>> rows, {DateTime? fetchedAt}) {
     if (rows.isEmpty) {
-      return const NonFerrousSheetData(cities: [], delhiSections: []);
+      return NonFerrousSheetData(
+        cities: [],
+        delhiSections: [],
+        fetchedAt: fetchedAt ?? DateTime.now(),
+      );
     }
 
     // ─── Column mapping based on sheet structure ───
@@ -210,6 +216,7 @@ class NonFerrousSheetData {
     return NonFerrousSheetData(
       cities: cities,
       delhiSections: delhiSections,
+      fetchedAt: fetchedAt ?? DateTime.now(),
     );
   }
 
@@ -278,6 +285,7 @@ class MetalItem {
   final String price1Label;
   final String? price2Label;
   final bool isSubHeader;
+  final DateTime? lastUpdated;
 
   const MetalItem({
     required this.name,
@@ -286,6 +294,7 @@ class MetalItem {
     this.price1Label = 'Price',
     this.price2Label,
     this.isSubHeader = false,
+    this.lastUpdated,
   });
 
   String get displayPrice1 => price1 != null ? '₹${price1!.toStringAsFixed(0)}' : '--';
