@@ -32,59 +32,27 @@ class WarehouseStockPage extends StatelessWidget {
         return RefreshIndicator(
           onRefresh: controller.refreshData,
           color: ColorConstants.primaryBlue,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeader(),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    headingRowColor: MaterialStateProperty.all(const Color(0xFF2C2C2C)),
-                    dataRowColor: MaterialStateProperty.all(ColorConstants.surfaceColor),
-                    columnSpacing: 20,
-                    horizontalMargin: 16,
-                    border: TableBorder(
-                      horizontalInside: BorderSide(color: Colors.grey.withOpacity(0.2), width: 0.5),
-                    ),
-                    columns: const [
-                      DataColumn(label: Text('SYMBOL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('LAST', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('IN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('OUT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('CHANGE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('CHN %', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('C. WR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('CHANGE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('CHN %', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('LIVE-WR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('CHANGE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('CHN %', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                    ],
-                    rows: controller.lmeData.map((item) {
-                      return DataRow(
-                        cells: [
-                          DataCell(Text(item.symbol, style: const TextStyle(fontWeight: FontWeight.bold))),
-                          DataCell(Text(item.last.toStringAsFixed(0))),
-                          DataCell(Text(item.inStock.toStringAsFixed(0))),
-                          DataCell(Text(item.outStock.toStringAsFixed(0))),
-                          DataCell(_buildChangeText(item.change)),
-                          DataCell(_buildChangeText(0, text: item.chnPercent)), // Parsing string directly
-                          DataCell(Text(item.cwr.toStringAsFixed(0))),
-                          DataCell(_buildChangeText(item.cwrChange)),
-                          DataCell(_buildChangeText(0, text: item.cwrChnPercent)),
-                          DataCell(Text(item.liveWr.toStringAsFixed(0))),
-                          DataCell(_buildChangeText(item.liveWrChange)),
-                          DataCell(_buildChangeText(0, text: item.liveWrChnPercent)),
-                        ],
-                      );
-                    }).toList(),
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: _buildHeader(),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final item = controller.lmeData[index];
+                      return _buildWarehouseCard(item);
+                    },
+                    childCount: controller.lmeData.length,
                   ),
                 ),
-                const SizedBox(height: 20),
-              ],
-            ),
+              ),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: 100),
+              ),
+            ],
           ),
         );
       }),
@@ -93,43 +61,52 @@ class WarehouseStockPage extends StatelessWidget {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      color: const Color(0xFF1E1E1E), // Dark header bg
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+      ),
       child: Column(
         children: [
           const Text(
             'LME WAREHOUSE STOCK REPORT',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
+              letterSpacing: 1.5,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Container(
-             padding: const EdgeInsets.all(8),
+             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
              decoration: BoxDecoration(
-               color: Colors.white,
-               borderRadius: BorderRadius.circular(4),
+               color: Colors.white.withOpacity(0.05),
+               borderRadius: BorderRadius.circular(8),
+               border: Border.all(color: Colors.white10),
              ),
              child: Column(
-                children: const [
-                   Text(
+                children: [
+                   const Text(
                      'CONMET INTERNATIONAL LLP',
-                     style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
+                     style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13),
                    ),
+                   const SizedBox(height: 2),
                    Text(
                      'Importers And Suppliers Of Non Ferrous Metals In India',
-                     style: TextStyle(color: Colors.red, fontSize: 10),
+                     style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 9),
                    ),
-                   Text(
-                     'Importing LME Grade A Material From Across The World.',
-                     style: TextStyle(color: Colors.red, fontSize: 10),
-                   ),
-                   Text(
-                     'Contact Us: 9871585566, 9810011615',
-                     style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 10),
+                   const SizedBox(height: 4),
+                   Row(
+                     mainAxisAlignment: MainAxisAlignment.center,
+                     children: [
+                       const Icon(Icons.phone, color: Colors.redAccent, size: 10),
+                       const SizedBox(width: 4),
+                       Text(
+                         '9871585566, 9810011615',
+                         style: TextStyle(color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.bold, fontSize: 10),
+                       ),
+                     ],
                    ),
                 ],
              ),
@@ -139,7 +116,151 @@ class WarehouseStockPage extends StatelessWidget {
     );
   }
 
-  Widget _buildChangeText(double value, {String? text}) {
+  Widget _buildWarehouseCard(dynamic item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: ColorConstants.borderColor.withOpacity(0.5)),
+      ),
+      child: Column(
+        children: [
+          // Card Header
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: ColorConstants.primaryBlue.withOpacity(0.05),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: ColorConstants.primaryBlue,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    item.symbol,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Last Price',
+                        style: TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
+                      Text(
+                        item.last.toStringAsFixed(0),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text(
+                      'Daily Change',
+                      style: TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
+                    _buildChangeText(item.change, bold: true),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                _buildValueSection('TOTAL STOCK', [
+                  _buildDetailItem('IN', item.inStock.toStringAsFixed(0)),
+                  _buildDetailItem('OUT', item.outStock.toStringAsFixed(0)),
+                  _buildDetailItem('CHANGE', '', child: _buildChangeText(item.change)),
+                  _buildDetailItem('CHANGE %', item.chnPercent),
+                ]),
+                const Divider(height: 24),
+                _buildValueSection('CANCELLED WARRANTS (C.WR)', [
+                  _buildDetailItem('VALUE', item.cwr.toStringAsFixed(0)),
+                  _buildDetailItem('CHANGE', '', child: _buildChangeText(item.cwrChange)),
+                  _buildDetailItem('CHANGE %', item.cwrChnPercent),
+                ]),
+                const Divider(height: 24),
+                _buildValueSection('LIVE WARRANTS (LIVE-WR)', [
+                  _buildDetailItem('VALUE', item.liveWr.toStringAsFixed(0)),
+                  _buildDetailItem('CHANGE', '', child: _buildChangeText(item.liveWrChange)),
+                  _buildDetailItem('CHANGE %', item.liveWrChnPercent),
+                ]),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildValueSection(String title, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: ColorConstants.primaryBlue,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 16,
+          runSpacing: 12,
+          children: children.map((w) => SizedBox(width: 70, child: w)).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value, {Widget? child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 2),
+        child ?? Text(
+          value,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChangeText(double value, {String? text, bool bold = false}) {
     final display = text ?? value.toStringAsFixed(0);
     // Check polarity
     bool isPos = value > 0;
@@ -159,7 +280,8 @@ class WarehouseStockPage extends StatelessWidget {
       display,
       style: TextStyle(
         color: color,
-        fontWeight: FontWeight.w500,
+        fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+        fontSize: bold ? 14 : 12,
       ),
     );
   }

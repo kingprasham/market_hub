@@ -259,6 +259,8 @@ class FX678ScraperService {
 
           double high = 0;
           double low = 0;
+          double prevHigh = 0;
+          double prevLow = 0;
           double open = 0;
           double prev = 0;
           double stock = 0;
@@ -282,6 +284,12 @@ class FX678ScraperService {
           if (cells.length > 10) {
             settlement = double.tryParse(cells[10].text.trim().replaceAll(',', '')) ?? 0.0;
           }
+          if (cells.length > 11) {
+            prevHigh = double.tryParse(cells[11].text.trim().replaceAll(',', '')) ?? 0.0;
+          }
+          if (cells.length > 12) {
+            prevLow = double.tryParse(cells[12].text.trim().replaceAll(',', '')) ?? 0.0;
+          }
 
           metals.add(ScrapedMetal(
             name: englishName,
@@ -293,6 +301,8 @@ class FX678ScraperService {
             low: low,
             open: open,
             prev: prev,
+            prevHigh: prevHigh,
+            prevLow: prevLow,
             stock: stock,
             settlement: settlement,
             exchange: exchange,
@@ -404,6 +414,8 @@ class ScrapedMetal {
   final double low;
   final double open;
   final double prev;
+  final double prevHigh;
+  final double prevLow;
   final double stock;
   final double settlement;
   final String exchange;
@@ -418,6 +430,8 @@ class ScrapedMetal {
     this.low = 0,
     this.open = 0,
     this.prev = 0,
+    this.prevHigh = 0,
+    this.prevLow = 0,
     this.stock = 0,
     this.settlement = 0,
     required this.exchange,

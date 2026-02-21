@@ -84,6 +84,8 @@ class FxController extends GetxController {
         rate: null,
         high: null,
         low: null,
+        prevHigh: null,
+        prevLow: null,
         change: null,
         changePercent: null,
         lastUpdated: now,
@@ -109,6 +111,8 @@ class FxController extends GetxController {
                   rate: match.rate == 0 ? null : match.rate,
                   high: match.high,
                   low: match.low,
+                  prevHigh: match.prevHigh,
+                  prevLow: match.prevLow,
                   change: match.change,
                   changePercent: match.changePercent,
                   lastUpdated: now,
@@ -143,6 +147,8 @@ class FxController extends GetxController {
               rate: dxy.price,
               high: dxy.high > 0 ? dxy.high : null,
               low: dxy.low > 0 ? dxy.low : null,
+              prevHigh: dxy.prevHigh > 0 ? dxy.prevHigh : null,
+              prevLow: dxy.prevLow > 0 ? dxy.prevLow : null,
               change: dxy.change,
               changePercent: dxy.changePercent,
               lastUpdated: now,
@@ -210,6 +216,8 @@ class FxPair {
   final double? rate;
   final double? high;
   final double? low;
+  final double? prevHigh;
+  final double? prevLow;
   final double? change;
   final double? changePercent;
   final DateTime lastUpdated;
@@ -223,6 +231,8 @@ class FxPair {
     required this.rate,
     required this.high,
     required this.low,
+    this.prevHigh,
+    this.prevLow,
     required this.change,
     required this.changePercent,
     required this.lastUpdated,

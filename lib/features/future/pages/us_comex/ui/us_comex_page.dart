@@ -186,109 +186,117 @@ class USComexPage extends StatelessWidget {
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
+        child: Column(
           children: [
-            // 1. Symbol/Icon (Compact)
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: _getMetalGradient(metal.symbol),
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  metal.symbol.substring(0, 2),
-                  style: TextStyles.bodyMedium.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+            Row(
+              children: [
+                // 1. Symbol/Icon (Compact)
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: _getMetalGradient(metal.symbol),
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // 2. Name & Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    metal.name,
-                    style: TextStyles.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w600,
+                  child: Center(
+                    child: Text(
+                      metal.symbol.substring(0, 2),
+                      style: TextStyles.bodyMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0A3161).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        child: Text(
-                          'COMEX',
-                          style: TextStyles.caption.copyWith(
-                            color: const Color(0xFF0A3161),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        metal.contract,
-                        style: TextStyles.caption.copyWith(
-                          color: ColorConstants.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // 3. Price & Change
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  hasData ? '\$${metal.lastPrice!.toStringAsFixed(2)}' : 'N/A',
-                  style: TextStyles.bodyMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: hasData ? null : Colors.grey[400],
-                  ),
                 ),
-                const SizedBox(height: 2),
-                if (hasData)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                const SizedBox(width: 12),
+
+                // 2. Name & Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-                        color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
-                        size: 16,
-                      ),
                       Text(
-                        '${metal.change!.abs().toStringAsFixed(2)} (${metal.changePercent!.abs().toStringAsFixed(2)}%)',
-                        style: TextStyles.caption.copyWith(
-                          color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
+                        metal.name,
+                        style: TextStyles.bodyMedium.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0A3161).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text(
+                              'COMEX',
+                              style: TextStyles.caption.copyWith(
+                                color: const Color(0xFF0A3161),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            metal.contract,
+                            style: TextStyles.caption.copyWith(
+                              color: ColorConstants.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
-                  )
-                else
-                  Text('—', style: TextStyles.caption.copyWith(color: Colors.grey[400])),
+                  ),
+                ),
+
+                // 3. Price & Change
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      hasData ? '\$${metal.lastPrice!.toStringAsFixed(2)}' : 'N/A',
+                      style: TextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: hasData ? null : Colors.grey[400],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    if (hasData)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                            color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
+                            size: 16,
+                          ),
+                          Text(
+                            '${metal.change!.abs().toStringAsFixed(2)} (${metal.changePercent!.abs().toStringAsFixed(2)}%)',
+                            style: TextStyles.caption.copyWith(
+                              color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Text('—', style: TextStyles.caption.copyWith(color: Colors.grey[400])),
+                  ],
+                ),
               ],
             ),
+            if (hasData) ...[
+              const SizedBox(height: 8),
+              _buildHighLowGrid(metal),
+            ],
           ],
         ),
       );
@@ -302,5 +310,46 @@ class USComexPage extends StatelessWidget {
     if (symbol.contains('PL')) return [const Color(0xFFE5E4E2), const Color(0xFFBCBCBC)];
     if (symbol.contains('PA')) return [const Color(0xFFCCC5B9), const Color(0xFFA8A196)];
     return [const Color(0xFF0A3161), const Color(0xFF0A3161).withOpacity(0.7)];
+  }
+
+  Widget _buildHighLowGrid(dynamic metal) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: ColorConstants.backgroundColor.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildInfoItem('High', metal.high != null ? '\$${metal.high!.toStringAsFixed(2)}' : '—'),
+          _buildInfoItem('Low', metal.low != null ? '\$${metal.low!.toStringAsFixed(2)}' : '—'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyles.caption.copyWith(
+            fontSize: 9,
+            color: ColorConstants.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyles.caption.copyWith(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: ColorConstants.textPrimary,
+          ),
+        ),
+      ],
+    );
   }
 }

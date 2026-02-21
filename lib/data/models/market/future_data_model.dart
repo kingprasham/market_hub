@@ -7,6 +7,8 @@ class FutureDataModel {
   final double previousClose;
   final double high;
   final double low;
+  final double? prevHigh;
+  final double? prevLow;
   final double open;
   final double change;
   final double changePercent;
@@ -25,6 +27,8 @@ class FutureDataModel {
     double? previousClose,
     required this.high,
     required this.low,
+    this.prevHigh,
+    this.prevLow,
     required this.open,
     required this.change,
     required this.changePercent,
@@ -48,6 +52,8 @@ class FutureDataModel {
       previousClose: (json['previousClose'] ?? 0).toDouble(),
       high: (json['high'] ?? 0).toDouble(),
       low: (json['low'] ?? 0).toDouble(),
+      prevHigh: json['prevHigh']?.toDouble(),
+      prevLow: json['prevLow']?.toDouble(),
       open: (json['open'] ?? 0).toDouble(),
       change: (json['change'] ?? 0).toDouble(),
       changePercent: (json['changePercent'] ?? 0).toDouble(),
@@ -72,6 +78,8 @@ class FutureDataModel {
       'previousClose': previousClose,
       'high': high,
       'low': low,
+      'prevHigh': prevHigh,
+      'prevLow': prevLow,
       'open': open,
       'change': change,
       'changePercent': changePercent,
@@ -92,6 +100,8 @@ class FutureDataModel {
     double? previousClose,
     double? high,
     double? low,
+    double? prevHigh,
+    double? prevLow,
     double? open,
     double? change,
     double? changePercent,
@@ -109,6 +119,8 @@ class FutureDataModel {
       previousClose: previousClose ?? this.previousClose,
       high: high ?? this.high,
       low: low ?? this.low,
+      prevHigh: prevHigh ?? this.prevHigh,
+      prevLow: prevLow ?? this.prevLow,
       open: open ?? this.open,
       change: change ?? this.change,
       changePercent: changePercent ?? this.changePercent,
@@ -136,4 +148,8 @@ class FutureDataModel {
   String get highDisplay => '\$${high.toStringAsFixed(2)}';
 
   String get lowDisplay => '\$${low.toStringAsFixed(2)}';
+
+  String get prevHighDisplay => prevHigh != null ? '\$${prevHigh!.toStringAsFixed(2)}' : '—';
+
+  String get prevLowDisplay => prevLow != null ? '\$${prevLow!.toStringAsFixed(2)}' : '—';
 }

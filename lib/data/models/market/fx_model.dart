@@ -9,6 +9,8 @@ class FXModel {
   final double changePercent;
   final double high;
   final double low;
+  final double? prevHigh;
+  final double? prevLow;
   final DateTime updatedAt;
 
   FXModel({
@@ -22,6 +24,8 @@ class FXModel {
     required this.changePercent,
     required this.high,
     required this.low,
+    this.prevHigh,
+    this.prevLow,
     required this.updatedAt,
   });
 
@@ -37,6 +41,8 @@ class FXModel {
       changePercent: (json['changePercent'] ?? 0).toDouble(),
       high: (json['high'] ?? 0).toDouble(),
       low: (json['low'] ?? 0).toDouble(),
+      prevHigh: json['prevHigh']?.toDouble(),
+      prevLow: json['prevLow']?.toDouble(),
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'])
           : DateTime.now(),
@@ -55,6 +61,8 @@ class FXModel {
       'changePercent': changePercent,
       'high': high,
       'low': low,
+      'prevHigh': prevHigh,
+      'prevLow': prevLow,
       'updatedAt': updatedAt.toIso8601String(),
     };
   }
@@ -142,6 +150,8 @@ class FxModel {
   final double? ask;
   final double? high;
   final double? low;
+  final double? prevHigh;
+  final double? prevLow;
   final DateTime lastUpdated;
   final String? source;
 
@@ -154,6 +164,8 @@ class FxModel {
     this.ask,
     this.high,
     this.low,
+    this.prevHigh,
+    this.prevLow,
     required this.lastUpdated,
     this.source,
   });
@@ -168,6 +180,8 @@ class FxModel {
       ask: json['ask']?.toDouble(),
       high: json['high']?.toDouble(),
       low: json['low']?.toDouble(),
+      prevHigh: json['prevHigh']?.toDouble(),
+      prevLow: json['prevLow']?.toDouble(),
       lastUpdated: json['lastUpdated'] != null
           ? DateTime.parse(json['lastUpdated'])
           : DateTime.now(),
@@ -185,6 +199,8 @@ class FxModel {
       'ask': ask,
       'high': high,
       'low': low,
+      'prevHigh': prevHigh,
+      'prevLow': prevLow,
       'lastUpdated': lastUpdated.toIso8601String(),
       'source': source,
     };
@@ -199,6 +215,8 @@ class FxModel {
     double? ask,
     double? high,
     double? low,
+    double? prevHigh,
+    double? prevLow,
     DateTime? lastUpdated,
     String? source,
   }) {
@@ -211,6 +229,8 @@ class FxModel {
       ask: ask ?? this.ask,
       high: high ?? this.high,
       low: low ?? this.low,
+      prevHigh: prevHigh ?? this.prevHigh,
+      prevLow: prevLow ?? this.prevLow,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       source: source ?? this.source,
     );

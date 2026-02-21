@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../../core/constants/color_constants.dart';
 import '../../../../../core/constants/text_styles.dart';
-import '../../../../../core/utils/formatters.dart';
 import '../../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../controller/fx_controller.dart';
 
@@ -113,97 +112,105 @@ class FxPage extends StatelessWidget {
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
+        child: Column(
           children: [
-            // 1. Symbol/Icon
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: _getCurrencyGradient(pair.pair),
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  pair.pair.length >= 3 ? pair.pair.substring(0, 3) : pair.pair,
-                  style: TextStyles.bodyMedium.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // 2. Name & Badge
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    pair.pair,
-                    style: TextStyles.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: ColorConstants.primaryOrange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      'FX',
-                      style: TextStyles.caption.copyWith(
-                        color: ColorConstants.primaryOrange,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // 3. Rate & Change
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            Row(
               children: [
-                Text(
-                  hasData ? pair.rate!.toStringAsFixed(4) : 'N/A',
-                  style: TextStyles.bodyMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: hasData ? null : Colors.grey[400],
+                // 1. Symbol/Icon
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: _getCurrencyGradient(pair.pair),
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      pair.pair.length >= 3 ? pair.pair.substring(0, 3) : pair.pair,
+                      style: TextStyles.bodyMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 2),
-                if (hasData)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                const SizedBox(width: 12),
+
+                // 2. Name & Badge
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-                        color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
-                        size: 16,
-                      ),
                       Text(
-                        '${pair.change!.abs().toStringAsFixed(4)} (${pair.changePercent!.abs().toStringAsFixed(2)}%)',
-                        style: TextStyles.caption.copyWith(
-                          color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
+                        pair.pair,
+                        style: TextStyles.bodyMedium.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      const SizedBox(height: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: ColorConstants.primaryOrange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: Text(
+                          'FX',
+                          style: TextStyles.caption.copyWith(
+                            color: ColorConstants.primaryOrange,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
                     ],
-                  )
-                else
-                  Text('—', style: TextStyles.caption.copyWith(color: Colors.grey[400])),
+                  ),
+                ),
+
+                // 3. Rate & Change
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      hasData ? pair.rate!.toStringAsFixed(4) : 'N/A',
+                      style: TextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: hasData ? null : Colors.grey[400],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    if (hasData)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                            color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
+                            size: 16,
+                          ),
+                          Text(
+                            '${pair.change!.abs().toStringAsFixed(4)} (${pair.changePercent!.abs().toStringAsFixed(2)}%)',
+                            style: TextStyles.caption.copyWith(
+                              color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Text('—', style: TextStyles.caption.copyWith(color: Colors.grey[400])),
+                  ],
+                ),
               ],
             ),
+            if (hasData) ...[
+              const SizedBox(height: 8),
+              _buildHighLowGrid(pair),
+            ],
           ],
         ),
       );
@@ -217,5 +224,46 @@ class FxPage extends StatelessWidget {
     if (pair.contains('JPY')) return [Color(0xFFC62828), Color(0xFFB71C1C)];
     if (pair.contains('CNY')) return [Color(0xFFD32F2F), Color(0xFFC62828)];
     return [ColorConstants.primaryOrange, ColorConstants.primaryOrange.withOpacity(0.7)];
+  }
+
+  Widget _buildHighLowGrid(dynamic pair) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: ColorConstants.backgroundColor.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildInfoItem('High', pair.high != null ? pair.high!.toStringAsFixed(4) : '—'),
+          _buildInfoItem('Low', pair.low != null ? pair.low!.toStringAsFixed(4) : '—'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyles.caption.copyWith(
+            fontSize: 9,
+            color: ColorConstants.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyles.caption.copyWith(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: ColorConstants.textPrimary,
+          ),
+        ),
+      ],
+    );
   }
 }

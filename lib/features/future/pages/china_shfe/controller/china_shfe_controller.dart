@@ -100,6 +100,8 @@ class ChinaSHFEController extends GetxController {
         lastPrice: null,
         high: null,
         low: null,
+        prevHigh: null,
+        prevLow: null,
         change: null,
         changePercent: null,
         lastUpdated: now,
@@ -123,6 +125,8 @@ class ChinaSHFEController extends GetxController {
                 lastPrice: match.price == 0 ? null : match.price,
                 high: match.high == 0 ? null : match.high,
                 low: match.low == 0 ? null : match.low,
+                prevHigh: match.prevHigh == 0 ? null : match.prevHigh,
+                prevLow: match.prevLow == 0 ? null : match.prevLow,
                 change: match.change,
                 changePercent: match.changePercent,
                 lastUpdated: now,
@@ -196,6 +200,8 @@ class SHFEMetal {
   final double? lastPrice;
   final double? high;
   final double? low;
+  final double? prevHigh;
+  final double? prevLow;
   final double? change;
   final double? changePercent;
   final DateTime lastUpdated;
@@ -208,6 +214,8 @@ class SHFEMetal {
     required this.lastPrice,
     required this.high,
     required this.low,
+    this.prevHigh,
+    this.prevLow,
     required this.change,
     required this.changePercent,
     required this.lastUpdated,

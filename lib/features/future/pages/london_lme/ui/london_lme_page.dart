@@ -107,112 +107,120 @@ class LondonLMEPage extends StatelessWidget {
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
+        child: Column(
           children: [
-            // Symbol icon
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: _getMetalGradient(metal.symbol),
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  metal.symbol.length >= 2 ? metal.symbol.substring(0, 2) : metal.symbol,
-                  style: TextStyles.bodyMedium.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+            Row(
+              children: [
+                // Symbol icon
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: _getMetalGradient(metal.symbol),
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // Name & exchange badge
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    metal.name,
-                    style: TextStyles.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w600,
+                  child: Center(
+                    child: Text(
+                      metal.symbol.length >= 2 ? metal.symbol.substring(0, 2) : metal.symbol,
+                      style: TextStyles.bodyMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: ColorConstants.primaryOrange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        child: Text(
-                          'LME',
-                          style: TextStyles.caption.copyWith(
-                            color: ColorConstants.primaryOrange,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        metal.contract,
-                        style: TextStyles.caption.copyWith(
-                          color: ColorConstants.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Price & change
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  hasData ? '\$${metal.lastPrice!.toStringAsFixed(2)}' : 'N/A',
-                  style: TextStyles.bodyMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: hasData ? null : Colors.grey[400],
-                  ),
                 ),
-                const SizedBox(height: 2),
-                if (hasData)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                const SizedBox(width: 12),
+
+                // Name & exchange badge
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-                        color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
-                        size: 16,
-                      ),
                       Text(
-                        '${metal.change!.abs().toStringAsFixed(2)} (${metal.changePercent!.abs().toStringAsFixed(2)}%)',
-                        style: TextStyles.caption.copyWith(
-                          color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
+                        metal.name,
+                        style: TextStyles.bodyMedium.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: ColorConstants.primaryOrange.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text(
+                              'LME',
+                              style: TextStyles.caption.copyWith(
+                                color: ColorConstants.primaryOrange,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            metal.contract,
+                            style: TextStyles.caption.copyWith(
+                              color: ColorConstants.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
-                  )
-                else
-                  Text(
-                    '—',
-                    style: TextStyles.caption.copyWith(color: Colors.grey[400]),
                   ),
+                ),
+
+                // Price & change
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      hasData ? '\$${metal.lastPrice!.toStringAsFixed(2)}' : 'N/A',
+                      style: TextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: hasData ? null : Colors.grey[400],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    if (hasData)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                            color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
+                            size: 16,
+                          ),
+                          Text(
+                            '${metal.change!.abs().toStringAsFixed(2)} (${metal.changePercent!.abs().toStringAsFixed(2)}%)',
+                            style: TextStyles.caption.copyWith(
+                              color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Text(
+                        '—',
+                        style: TextStyles.caption.copyWith(color: Colors.grey[400]),
+                      ),
+                  ],
+                ),
               ],
             ),
+            if (hasData) ...[
+              const SizedBox(height: 8),
+              _buildHighLowGrid(metal),
+            ],
           ],
         ),
       );
@@ -228,5 +236,46 @@ class LondonLMEPage extends StatelessWidget {
     if (symbol.contains('SN')) return [const Color(0xFF795548), const Color(0xFF5D4037)];
     if (symbol.contains('AA')) return [const Color(0xFFFFD700), const Color(0xFFDAA520)];
     return [ColorConstants.primaryBlue, ColorConstants.primaryBlue.withOpacity(0.7)];
+  }
+
+  Widget _buildHighLowGrid(LMEMetal metal) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: ColorConstants.backgroundColor.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildInfoItem('High', metal.high != null ? '\$${metal.high!.toStringAsFixed(2)}' : '—'),
+          _buildInfoItem('Low', metal.low != null ? '\$${metal.low!.toStringAsFixed(2)}' : '—'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyles.caption.copyWith(
+            fontSize: 9,
+            color: ColorConstants.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyles.caption.copyWith(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: ColorConstants.textPrimary,
+          ),
+        ),
+      ],
+    );
   }
 }

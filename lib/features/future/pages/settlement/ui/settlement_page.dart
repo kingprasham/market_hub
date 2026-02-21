@@ -31,48 +31,27 @@ class SettlementPage extends StatelessWidget {
         return RefreshIndicator(
           onRefresh: controller.refreshData,
           color: ColorConstants.primaryBlue,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeader(),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    headingRowColor: MaterialStateProperty.all(const Color(0xFF2C2C2C)),
-                    dataRowColor: MaterialStateProperty.all(ColorConstants.surfaceColor),
-                    columnSpacing: 16,
-                    horizontalMargin: 16,
-                    border: TableBorder(
-                      horizontalInside: BorderSide(color: Colors.grey.withOpacity(0.2), width: 0.5),
-                      // verticalInside: BorderSide(color: Colors.grey.withOpacity(0.2), width: 0.5),
-                    ),
-                    columns: const [
-                      DataColumn(label: Text('DATE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('METAL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('BID (Cash)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('ASK (Cash)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('BID (3M)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('ASK (3M)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                    ],
-                    rows: controller.settlementData.map((item) {
-                      return DataRow(
-                        cells: [
-                          DataCell(Text(item.date)),
-                          DataCell(Text(item.metal, style: const TextStyle(fontWeight: FontWeight.w600))),
-                          DataCell(Text(item.bidCash > 0 ? item.bidCash.toStringAsFixed(0) : '-')),
-                          DataCell(Text(item.askCash > 0 ? item.askCash.toStringAsFixed(0) : '-')),
-                          DataCell(Text(item.bid3M > 0 ? item.bid3M.toStringAsFixed(0) : '-')),
-                          DataCell(Text(item.ask3M > 0 ? item.ask3M.toStringAsFixed(0) : '-')),
-                        ],
-                      );
-                    }).toList(),
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: _buildHeader(),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final item = controller.settlementData[index];
+                      return _buildSettlementCard(item);
+                    },
+                    childCount: controller.settlementData.length,
                   ),
                 ),
-                const SizedBox(height: 20),
-              ],
-            ),
+              ),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: 20),
+              ),
+            ],
           ),
         );
       }),
@@ -81,19 +60,165 @@ class SettlementPage extends StatelessWidget {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      color: const Color(0xFF00897B),
-      child: const Center(
-        child: Text(
-          'SETTLEMENT',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-          ),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF00695C),
+            const Color(0xFF00897B),
+          ],
         ),
       ),
+      child: Column(
+        children: [
+          const Text(
+            'LME SETTLEMENT PRICES',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Official Cash & 3-Month Settlements',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.8),
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettlementCard(dynamic item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: ColorConstants.borderColor.withOpacity(0.5)),
+      ),
+      child: Column(
+        children: [
+          // Card Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F5F5),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  item.metal,
+                  style: TextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: ColorConstants.primaryBlue,
+                  ),
+                ),
+                Text(
+                  item.date,
+                  style: TextStyles.caption.copyWith(
+                    color: ColorConstants.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Cash Section
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildPriceSectionHeader('CASH (USD)'),
+                      const SizedBox(height: 8),
+                      _buildPriceRow('Bid', item.bidCash),
+                      const SizedBox(height: 4),
+                      _buildPriceRow('Ask', item.askCash),
+                    ],
+                  ),
+                ),
+                
+                Container(
+                  height: 60,
+                  width: 1,
+                  color: ColorConstants.borderColor.withOpacity(0.5),
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                
+                // 3M Section
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildPriceSectionHeader('3-MONTH (USD)'),
+                      const SizedBox(height: 8),
+                      _buildPriceRow('Bid', item.bid3M),
+                      const SizedBox(height: 4),
+                      _buildPriceRow('Ask', item.ask3M),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceSectionHeader(String title) {
+    return Text(
+      title,
+      style: TextStyles.caption.copyWith(
+        fontSize: 10,
+        fontWeight: FontWeight.bold,
+        color: ColorConstants.textSecondary,
+        letterSpacing: 0.5,
+      ),
+    );
+  }
+
+  Widget _buildPriceRow(String label, double value) {
+    final displayValue = value > 0 ? value.toStringAsFixed(0) : '-';
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyles.bodySmall.copyWith(
+            color: ColorConstants.textSecondary,
+          ),
+        ),
+        Text(
+          displayValue,
+          style: TextStyles.bodyMedium.copyWith(
+            fontWeight: FontWeight.w600,
+            color: value > 0 ? ColorConstants.textPrimary : Colors.grey,
+          ),
+        ),
+      ],
     );
   }
 }
