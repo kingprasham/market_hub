@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../../../core/services/watchlist_service.dart';
@@ -6,18 +6,27 @@ import '../../../../../core/services/scraper/fx678_scraper_service.dart';
 import '../../../../../data/models/watchlist/watchlist_item_model.dart';
 import '../../../../../core/utils/helpers.dart';
 
-/// LME Controller - Fetches real-time LME prices from Metals.Dev API
-/// Data: Copper, Aluminum, Zinc, Lead, Nickel, Tin (Base Metals)
+/// LME Controller — always shows fixed metal list, populates N/A when data unavailable
 class LondonLMEController extends GetxController {
   final isLoading = false.obs;
   final metals = <LMEMetal>[].obs;
   final watchlistUpdateTrigger = 0.obs;
   final dataSource = 'Loading...'.obs;
   final hasError = false.obs;
-  final errorMessage = ''.obs;
+  final isRefreshing = false.obs;
   final selectedFilter = 'All'.obs;
-  
-  final filterOptions = ['All', 'Base Metals'];
+  final filterOptions = ['All'];
+
+  /// Fixed ordered list — always displayed; prices filled from scraper
+  static const _fixedList = [
+    ('Copper',    'CU'),
+    ('Aluminium', 'AL'),
+    ('Zinc',      'ZN'),
+    ('Nickel',    'NI'),
+    ('Lead',      'PB'),
+    ('Tin',       'SN'),
+    ('AA',        'AA'),
+  ];
 
   WatchlistService? _watchlistService;
   Timer? _refreshTimer;
@@ -43,84 +52,85 @@ class LondonLMEController extends GetxController {
   }
 
   void _startAutoRefresh() {
-    // Refresh every 30 minutes to conserve API quota (100 requests/month free)
-    _refreshTimer = Timer.periodic(const Duration(minutes: 30), (_) {
-      loadData();
-    });
+    _refreshTimer = Timer.periodic(const Duration(minutes: 30), (_) => loadData());
   }
 
-  // Filtered metals based on selected filter
-  List<LMEMetal> get filteredMetals {
-    if (selectedFilter.value == 'All') {
-      return metals;
-    }
-    return metals.where((m) => m.category == selectedFilter.value).toList();
-  }
+  List<LMEMetal> get filteredMetals => metals;
+  void setFilter(String filter) => selectedFilter.value = filter;
 
-  void setFilter(String filter) {
-    selectedFilter.value = filter;
-  }
-
-  List<String> get watchlistIds {
-    if (_watchlistService == null) return [];
-    return _watchlistService!.watchlistItems.map((item) => item.id).toList();
-  }
-
-  bool isInWatchlist(String id) {
-    return _watchlistService?.isInWatchlist(id) ?? false;
-  }
+  List<String> get watchlistIds =>
+      _watchlistService?.watchlistItems.map((i) => i.id).toList() ?? [];
+  bool isInWatchlist(String id) => _watchlistService?.isInWatchlist(id) ?? false;
 
   Future<void> loadData() async {
     try {
       isLoading.value = true;
       hasError.value = false;
-      errorMessage.value = '';
-      
-      final scraper = Get.put(FX678ScraperService());
-      
-      // Fetch LME data from scraper
-      final scrapedData = await scraper.fetchLME();
-      
-      if (scrapedData.isEmpty) {
-        hasError.value = true;
-        errorMessage.value = 'Failed to fetch LME prices.\nSource unavailable or network issue.';
-        metals.value = [];
-        dataSource.value = 'No Data';
-        return;
-      }
-      
+
+      // Build base list with N/A values
       final now = DateTime.now();
-      final List<LMEMetal> lmeMetals = [];
-      
-      for (final item in scrapedData) {
-        lmeMetals.add(LMEMetal(
-          id: 'lme_${item.symbol.toLowerCase()}',
-          symbol: item.symbol,
-          name: item.name,
-          contract: '3-Month', // Default for LME usually
-          lastPrice: item.price,
-          high: item.high, 
-          low: item.low,  
-          change: item.change,
-          changePercent: item.changePercent,
-          lastUpdated: now,
-          category: 'Base Metals',
-        ));
+      final base = _fixedList.map((entry) => LMEMetal(
+        id: 'lme_${entry.$2.toLowerCase()}',
+        symbol: entry.$2,
+        name: 'LME ${entry.$1}',
+        contract: '3-Month',
+        lastPrice: null,
+        high: null,
+        low: null,
+        change: null,
+        changePercent: null,
+        lastUpdated: now,
+        category: 'Base Metals',
+      )).toList();
+
+      // Try scraper — fill in prices where available
+      try {
+        final scraper = Get.put(FX678ScraperService());
+        final scraped = await scraper.fetchLME();
+        if (scraped.isNotEmpty) {
+          for (int i = 0; i < base.length; i++) {
+            final match = scraped.firstWhereOrNull(
+              (s) => s.name.toUpperCase().contains(_fixedList[i].$1.toUpperCase()) ||
+                     s.symbol.toUpperCase() == _fixedList[i].$2.toUpperCase(),
+            );
+            if (match != null) {
+              base[i] = LMEMetal(
+                id: base[i].id,
+                symbol: base[i].symbol,
+                name: base[i].name,
+                contract: base[i].contract,
+                lastPrice: match.price == 0 ? null : match.price,
+                high: match.high == 0 ? null : match.high,
+                low: match.low == 0 ? null : match.low,
+                change: match.change,
+                changePercent: match.changePercent,
+                lastUpdated: now,
+                category: base[i].category,
+              );
+            }
+          }
+          dataSource.value = 'FX678 (Live)';
+        } else {
+          dataSource.value = 'Scraper Unavailable';
+        }
+      } catch (e) {
+        debugPrint('LME scraper error: $e');
+        dataSource.value = 'Scraper Error';
       }
-      
-      metals.value = lmeMetals;
-      dataSource.value = 'FX678 (Scraped)';
-      debugPrint('✅ Loaded ${lmeMetals.length} LME metals from FX678 Scraper');
-      
+
+      metals.value = base;
+      debugPrint('✅ LME: ${base.where((m) => m.lastPrice != null).length}/${base.length} prices loaded');
     } catch (e) {
-      debugPrint('Error loading LME data: $e');
-      hasError.value = true;
-      errorMessage.value = 'Error: $e';
-      metals.value = [];
-      dataSource.value = 'Error';
+      debugPrint('Error in LME loadData: $e');
     } finally {
       isLoading.value = false;
+      isRefreshing.value = false;
     }
+  }
+
+  Future<void> refreshData() async {
+    isRefreshing.value = true;
+    await loadData();
   }
 
   @override
@@ -129,19 +139,14 @@ class LondonLMEController extends GetxController {
     super.onClose();
   }
 
-  Future<void> refreshData() async {
-    await loadData();
-  }
-
   void toggleWatchlist(String id) {
     if (_watchlistService == null) {
       Helpers.showError('Watchlist service not available');
       return;
     }
-    
     final metal = metals.firstWhereOrNull((m) => m.id == id);
     if (metal == null) return;
-    
+
     if (_watchlistService!.isInWatchlist(id)) {
       _watchlistService!.removeFromWatchlist(id);
       Helpers.showSuccess('Removed from watchlist');
@@ -151,9 +156,9 @@ class LondonLMEController extends GetxController {
           symbol: metal.symbol,
           name: metal.name,
           exchange: 'LME',
-          price: metal.lastPrice,
-          change: metal.change,
-          changePercent: metal.changePercent,
+          price: metal.lastPrice ?? 0,
+          change: metal.change ?? 0,
+          changePercent: metal.changePercent ?? 0,
           currency: 'USD',
         ).copyWith(id: id),
       );
@@ -164,21 +169,20 @@ class LondonLMEController extends GetxController {
   }
 }
 
-
 class LMEMetal {
   final String id;
   final String symbol;
   final String name;
   final String contract;
-  final double lastPrice;
-  final double high;
-  final double low;
-  final double change;
-  final double changePercent;
+  final double? lastPrice;
+  final double? high;
+  final double? low;
+  final double? change;
+  final double? changePercent;
   final DateTime lastUpdated;
-  final String category; // Base Metals, Precious
+  final String category;
 
-  LMEMetal({
+  const LMEMetal({
     required this.id,
     required this.symbol,
     required this.name,
@@ -191,4 +195,6 @@ class LMEMetal {
     required this.lastUpdated,
     required this.category,
   });
+
+  bool get hasData => lastPrice != null;
 }

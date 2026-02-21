@@ -20,67 +20,11 @@ class FxPage extends StatelessWidget {
           return const ShimmerListLoader();
         }
 
-        // Show error state
-        if (controller.hasError.value || controller.currencyPairs.isEmpty) {
-          return RefreshIndicator(
-            onRefresh: controller.refreshData,
-            color: ColorConstants.primaryOrange,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.8,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.cloud_off, size: 64, color: Colors.grey[400]),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No Data Available',
-                        style: TextStyles.h5.copyWith(color: ColorConstants.textSecondary),
-                      ),
-                      const SizedBox(height: 8),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Text(
-                          controller.errorMessage.value.isNotEmpty 
-                            ? controller.errorMessage.value
-                            : 'Unable to fetch FX data.\nCheck your internet connection.',
-                          textAlign: TextAlign.center,
-                          style: TextStyles.bodySmall.copyWith(color: Colors.grey[600]),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: controller.refreshData,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Retry'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: ColorConstants.primaryOrange,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Data Source: ${controller.dataSource.value}',
-                        style: TextStyles.caption.copyWith(color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
-
         return RefreshIndicator(
           onRefresh: controller.refreshData,
           color: ColorConstants.primaryBlue,
           child: CustomScrollView(
             slivers: [
-              // Market Status Header (Removed to match China/London style)
-
-
               // Filter Options
               SliverToBoxAdapter(
                 child: _buildFilterOptions(),
@@ -152,12 +96,12 @@ class FxPage extends StatelessWidget {
   }
 
   Widget _buildCompactCurrencyRow(dynamic pair, int index, int totalCount) {
-    final isPositive = pair.change >= 0;
+    final hasData = pair.rate != null;
+    final isPositive = (pair.change ?? 0) >= 0;
 
     return Obx(() {
-      // Observe watchlistUpdateTrigger to rebuild when watchlist changes
       controller.watchlistUpdateTrigger.value;
-      
+
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -171,7 +115,7 @@ class FxPage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            // 1. Symbol/Icon (Compact)
+            // 1. Symbol/Icon
             Container(
               width: 36,
               height: 36,
@@ -185,7 +129,7 @@ class FxPage extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  pair.pair.substring(0, 3),
+                  pair.pair.length >= 3 ? pair.pair.substring(0, 3) : pair.pair,
                   style: TextStyles.bodyMedium.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -195,7 +139,7 @@ class FxPage extends StatelessWidget {
             ),
             const SizedBox(width: 12),
 
-            // 2. Name & Details
+            // 2. Name & Badge
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,57 +151,57 @@ class FxPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: ColorConstants.primaryOrange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        child: Text(
-                          'FX',
-                          style: TextStyles.caption.copyWith(
-                            color: ColorConstants.primaryOrange,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 10,
-                          ),
-                        ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: ColorConstants.primaryOrange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      'FX',
+                      style: TextStyles.caption.copyWith(
+                        color: ColorConstants.primaryOrange,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10,
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
             ),
 
-            // 3. Price & Change
+            // 3. Rate & Change
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  pair.rate.toStringAsFixed(4),
+                  hasData ? pair.rate!.toStringAsFixed(4) : 'N/A',
                   style: TextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.w700,
+                    color: hasData ? null : Colors.grey[400],
                   ),
                 ),
                 const SizedBox(height: 2),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-                      color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
-                      size: 16,
-                    ),
-                    Text(
-                      '${pair.change.abs().toStringAsFixed(4)} (${pair.changePercent.abs().toStringAsFixed(2)}%)',
-                      style: TextStyles.caption.copyWith(
+                if (hasData)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
                         color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
-                        fontWeight: FontWeight.w600,
+                        size: 16,
                       ),
-                    ),
-                  ],
-                ),
+                      Text(
+                        '${pair.change!.abs().toStringAsFixed(4)} (${pair.changePercent!.abs().toStringAsFixed(2)}%)',
+                        style: TextStyles.caption.copyWith(
+                          color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Text('—', style: TextStyles.caption.copyWith(color: Colors.grey[400])),
               ],
             ),
           ],

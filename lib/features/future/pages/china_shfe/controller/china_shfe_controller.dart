@@ -1,61 +1,65 @@
+﻿import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../../../core/services/watchlist_service.dart';
 import '../../../../../core/services/scraper/fx678_scraper_service.dart';
-import '../../../../../core/services/external_apis/fx_rates_service.dart';
 import '../../../../../data/models/watchlist/watchlist_item_model.dart';
 import '../../../../../core/utils/helpers.dart';
 
-/// SHFE Controller - Shows LME prices converted to CNY as market proxy
-/// No free real-time SHFE API is available, so we use LME data with FX conversion
+/// SHFE Controller — always shows fixed metal list, populates N/A when data unavailable
 class ChinaSHFEController extends GetxController {
   final isLoading = false.obs;
   final metals = <SHFEMetal>[].obs;
   final watchlistUpdateTrigger = 0.obs;
-  final dataSource = 'No Data'.obs;
+  final dataSource = 'Loading...'.obs;
   final hasError = false.obs;
-  final errorMessage = ''.obs;
-
-  // Filter logic
+  final isRefreshing = false.obs;
   final selectedFilter = 'All'.obs;
-  final filterOptions = ['All', 'Base Metals', 'Precious', 'Ferrous', 'Energy', 'Chemicals'];
+  final filterOptions = ['All'];
 
-  List<SHFEMetal> get filteredMetals {
-    if (selectedFilter.value == 'All') {
-      return metals;
-    }
+  /// Fixed ordered list — symbol used for matching
+  static const _fixedList = [
+    ('Copper',                    'CU'),
+    ('Aluminium',                 'AL'),
+    ('Zinc',                      'ZN'),
+    ('Nickel',                    'NI'),
+    ('Lead',                      'PB'),
+    ('Tin',                       'SN'),
+    ('Gold',                      'AU'),
+    ('Silver',                    'AG'),
+    ('Ferro Silicon',             'SF'),
+    ('Ferro Manganese Silicon',   'SM'),
+    ('SS',                        'SS'),
+    ('WR',                        'WR'),
+    ('Rebar',                     'RB'),
+  ];
 
-    return metals.where((metal) {
-      final symbol = metal.symbol.toUpperCase();
-      switch (selectedFilter.value) {
-        case 'Base Metals':
-          return ['CU', 'AL', 'ZN', 'PB', 'NI', 'SN', 'AO'].any((s) => symbol.contains(s));
-        case 'Precious':
-          return ['AU', 'AG'].any((s) => symbol.contains(s));
-        case 'Ferrous':
-          return ['RB', 'HC', 'SS', 'I'].any((s) => symbol.startsWith(s)); // I for Iron Ore
-        case 'Energy':
-          return ['SC', 'FU', 'LU'].any((s) => symbol.startsWith(s));
-        case 'Chemicals':
-          return ['RU', 'NR', 'BU', 'SP', 'EG', 'EB'].any((s) => symbol.startsWith(s));
-        default:
-          return true;
-      }
-    }).toList();
-  }
-
-  void setFilter(String filter) {
-    selectedFilter.value = filter;
-  }
+  /// Match keywords used to find scraped data for each entry
+  static const _matchKeywords = [
+    ['Copper'],
+    ['Aluminium', 'Aluminum'],
+    ['Zinc'],
+    ['Nickel'],
+    ['Lead'],
+    ['Tin'],
+    ['Gold'],
+    ['Silver'],
+    ['Ferro Silicon'],
+    ['Ferro Manganese', 'Ferro Mn', 'Manganese Silicon'],
+    ['SS', 'Stainless'],
+    ['WR', 'Wire Rod'],
+    ['Rebar'],
+  ];
 
   WatchlistService? _watchlistService;
-  FxRatesService? _fxRatesService;
+  Timer? _refreshTimer;
 
   @override
   void onInit() {
     super.onInit();
     _initService();
     loadData();
+    _startAutoRefresh();
   }
 
   void _initService() {
@@ -68,80 +72,91 @@ class ChinaSHFEController extends GetxController {
     } catch (e) {
       debugPrint('WatchlistService not found: $e');
     }
-    
-    try {
-      _fxRatesService = Get.find<FxRatesService>();
-    } catch (e) {
-      debugPrint('FxRatesService not found: $e');
-    }
   }
 
-  List<String> get watchlistIds {
-    if (_watchlistService == null) return [];
-    return _watchlistService!.watchlistItems.map((item) => item.id).toList();
+  void _startAutoRefresh() {
+    _refreshTimer = Timer.periodic(const Duration(minutes: 30), (_) => loadData());
   }
 
-  bool isInWatchlist(String id) {
-    return _watchlistService?.isInWatchlist(id) ?? false;
-  }
+  List<SHFEMetal> get filteredMetals => metals;
+  void setFilter(String filter) => selectedFilter.value = filter;
 
-  bool isStarred(String id) {
-    return _watchlistService?.isStarred(id) ?? false;
-  }
+  List<String> get watchlistIds =>
+      _watchlistService?.watchlistItems.map((i) => i.id).toList() ?? [];
+  bool isInWatchlist(String id) => _watchlistService?.isInWatchlist(id) ?? false;
+  bool isStarred(String id) => _watchlistService?.isStarred(id) ?? false;
 
   Future<void> loadData() async {
     try {
       isLoading.value = true;
       hasError.value = false;
-      
-      final scraper = Get.put(FX678ScraperService());
-      
-      // Fetch SHFE data from scraper
-      final scrapedData = await scraper.fetchSHFE();
-      
-      if (scrapedData.isEmpty) {
-        hasError.value = true;
-        errorMessage.value = 'Failed to fetch market data.\nAccess to SHFE denied.';
-        metals.value = [];
-        dataSource.value = 'No Data';
-        return;
-      }
-      
+
       final now = DateTime.now();
-      final List<SHFEMetal> shfeMetals = [];
-      
-      for (final item in scrapedData) {
-        shfeMetals.add(SHFEMetal(
-          id: 'shfe_${item.symbol.toLowerCase()}',
-          symbol: item.symbol,
-          name: item.name,
-          contract: 'Main Contract',
-          lastPrice: item.price,
-          high: item.high,
-          low: item.low,
-          change: item.change,
-          changePercent: item.changePercent,
-          lastUpdated: now,
-        ));
+      final base = List.generate(_fixedList.length, (i) => SHFEMetal(
+        id: 'shfe_${_fixedList[i].$2.toLowerCase()}',
+        symbol: _fixedList[i].$2,
+        name: 'SHFE ${_fixedList[i].$1}',
+        contract: 'Main Contract',
+        lastPrice: null,
+        high: null,
+        low: null,
+        change: null,
+        changePercent: null,
+        lastUpdated: now,
+      ));
+
+      try {
+        final scraper = Get.put(FX678ScraperService());
+        final scraped = await scraper.fetchSHFE();
+        if (scraped.isNotEmpty) {
+          for (int i = 0; i < base.length; i++) {
+            final keywords = _matchKeywords[i];
+            final match = scraped.firstWhereOrNull((s) =>
+              keywords.any((kw) => s.name.toUpperCase().contains(kw.toUpperCase())),
+            );
+            if (match != null) {
+              base[i] = SHFEMetal(
+                id: base[i].id,
+                symbol: base[i].symbol,
+                name: base[i].name,
+                contract: base[i].contract,
+                lastPrice: match.price == 0 ? null : match.price,
+                high: match.high == 0 ? null : match.high,
+                low: match.low == 0 ? null : match.low,
+                change: match.change,
+                changePercent: match.changePercent,
+                lastUpdated: now,
+              );
+            }
+          }
+          dataSource.value = 'SHFE (Live)';
+        } else {
+          dataSource.value = 'Scraper Unavailable';
+        }
+      } catch (e) {
+        debugPrint('SHFE scraper error: $e');
+        dataSource.value = 'Scraper Error';
       }
-      
-      metals.value = shfeMetals;
-      dataSource.value = 'SHFE (Live)';
-      debugPrint('✅ Loaded ${shfeMetals.length} SHFE metals from FX678 Scraper');
-      
+
+      metals.value = base;
+      debugPrint('✅ SHFE: ${base.where((m) => m.lastPrice != null).length}/${base.length} prices loaded');
     } catch (e) {
-      debugPrint('Error loading SHFE data: $e');
-      hasError.value = true;
-      errorMessage.value = 'Error: $e';
-      metals.value = [];
-      dataSource.value = 'Error';
+      debugPrint('Error in SHFE loadData: $e');
     } finally {
       isLoading.value = false;
+      isRefreshing.value = false;
     }
   }
 
   Future<void> refreshData() async {
+    isRefreshing.value = true;
     await loadData();
+  }
+
+  @override
+  void onClose() {
+    _refreshTimer?.cancel();
+    super.onClose();
   }
 
   void toggleWatchlist(String id) {
@@ -149,7 +164,6 @@ class ChinaSHFEController extends GetxController {
       Helpers.showError('Watchlist service not available');
       return;
     }
-
     final metal = metals.firstWhereOrNull((m) => m.id == id);
     if (metal == null) return;
 
@@ -161,32 +175,32 @@ class ChinaSHFEController extends GetxController {
         symbol: metal.symbol,
         name: metal.name,
         exchange: 'SHFE',
-        price: metal.lastPrice,
-        change: metal.change,
-        changePercent: metal.changePercent,
+        price: metal.lastPrice ?? 0,
+        change: metal.change ?? 0,
+        changePercent: metal.changePercent ?? 0,
         currency: 'CNY',
       );
       _watchlistService!.addToWatchlist(item.copyWith(id: id));
       _watchlistService!.toggleStar(id);
       Helpers.showSuccess('Added to watchlist');
     }
+    watchlistUpdateTrigger.value++;
   }
 }
-
 
 class SHFEMetal {
   final String id;
   final String symbol;
   final String name;
   final String contract;
-  final double lastPrice;
-  final double high;
-  final double low;
-  final double change;
-  final double changePercent;
+  final double? lastPrice;
+  final double? high;
+  final double? low;
+  final double? change;
+  final double? changePercent;
   final DateTime lastUpdated;
 
-  SHFEMetal({
+  const SHFEMetal({
     required this.id,
     required this.symbol,
     required this.name,
@@ -198,4 +212,6 @@ class SHFEMetal {
     required this.changePercent,
     required this.lastUpdated,
   });
+
+  bool get hasData => lastPrice != null;
 }

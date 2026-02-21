@@ -20,77 +20,17 @@ class ChinaSHFEPage extends StatelessWidget {
           return const ShimmerListLoader();
         }
 
-        // Show empty/error state
-        if (controller.hasError.value || controller.metals.isEmpty) {
-          return RefreshIndicator(
-            onRefresh: controller.refreshData,
-            color: const Color(0xFFDE2910),
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.8,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
-                      const SizedBox(height: 16),
-                      Text(
-                        'SHFE Data Unavailable',
-                        style: TextStyles.h5.copyWith(color: ColorConstants.textSecondary),
-                      ),
-                      const SizedBox(height: 8),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Text(
-                          controller.errorMessage.value.isNotEmpty 
-                            ? controller.errorMessage.value
-                            : 'Shanghai Futures Exchange data\nrequires a paid API subscription.',
-                          textAlign: TextAlign.center,
-                          style: TextStyles.bodySmall.copyWith(color: Colors.grey[600]),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.info_outline, color: Colors.orange[700], size: 20),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Contact support for access',
-                              style: TextStyles.caption.copyWith(color: Colors.orange[700]),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
-
         return RefreshIndicator(
           onRefresh: controller.refreshData,
-          color: ColorConstants.primaryBlue,
+          color: const Color(0xFFDE2910),
           child: CustomScrollView(
             slivers: [
-              // Market Status Header
-
-
               // Filter Options
               SliverToBoxAdapter(
                 child: _buildFilterOptions(),
               ),
 
-              // Metal Cards List
+              // Metal List
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 sliver: SliverList(
@@ -153,7 +93,8 @@ class ChinaSHFEPage extends StatelessWidget {
   }
 
   Widget _buildCompactMetalRow(dynamic metal, int index, int totalCount) {
-    final isPositive = metal.change >= 0;
+    final hasData = metal.lastPrice != null;
+    final isPositive = (metal.change ?? 0) >= 0;
 
     return Obx(() {
       controller.watchlistUpdateTrigger.value;
@@ -243,29 +184,33 @@ class ChinaSHFEPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '¥${metal.lastPrice.toStringAsFixed(0)}',
+                  hasData ? '¥${metal.lastPrice!.toStringAsFixed(0)}' : 'N/A',
                   style: TextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.w700,
+                    color: hasData ? null : Colors.grey[400],
                   ),
                 ),
                 const SizedBox(height: 2),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-                      color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
-                      size: 16,
-                    ),
-                    Text(
-                      '${metal.change.abs().toStringAsFixed(0)} (${metal.changePercent.abs().toStringAsFixed(2)}%)',
-                      style: TextStyles.caption.copyWith(
+                if (hasData)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
                         color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
-                        fontWeight: FontWeight.w600,
+                        size: 16,
                       ),
-                    ),
-                  ],
-                ),
+                      Text(
+                        '${metal.change!.abs().toStringAsFixed(0)} (${metal.changePercent!.abs().toStringAsFixed(2)}%)',
+                        style: TextStyles.caption.copyWith(
+                          color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Text('—', style: TextStyles.caption.copyWith(color: Colors.grey[400])),
               ],
             ),
           ],

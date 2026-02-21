@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/color_constants.dart';
 import '../../../core/constants/text_styles.dart';
@@ -31,12 +31,21 @@ class FutureScreen extends GetView<FutureController> {
           style: TextStyles.h4.copyWith(color: ColorConstants.textPrimary),
         ),
         actions: [
-          IconButton(
-            onPressed: controller.fetchAllData,
-            icon: const Icon(
-              Icons.refresh,
-              color: ColorConstants.textPrimary,
-            ),
+          Obx(() => controller.isRefreshing.value
+            ? const Padding(
+                padding: EdgeInsets.all(12),
+                child: SizedBox(
+                  width: 24, height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            : IconButton(
+                onPressed: controller.refreshData,
+                icon: const Icon(
+                  Icons.refresh,
+                  color: ColorConstants.textPrimary,
+                ),
+              ),
           ),
         ],
       ),

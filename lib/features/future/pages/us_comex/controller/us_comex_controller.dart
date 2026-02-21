@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../../../core/services/watchlist_service.dart';
@@ -6,18 +6,38 @@ import '../../../../../core/services/scraper/fx678_scraper_service.dart';
 import '../../../../../data/models/watchlist/watchlist_item_model.dart';
 import '../../../../../core/utils/helpers.dart';
 
-/// COMEX Controller - Fetches real-time COMEX prices from Metals.Dev API
-/// Data: Gold, Silver, Platinum, Palladium (Precious) + Copper (Base)
+/// COMEX Controller — always shows fixed list, populates N/A when data unavailable
 class USComexController extends GetxController {
   final isLoading = false.obs;
   final metals = <ComexMetal>[].obs;
   final watchlistUpdateTrigger = 0.obs;
   final dataSource = 'Loading...'.obs;
   final hasError = false.obs;
-  final errorMessage = ''.obs;
+  final isRefreshing = false.obs;
   final selectedFilter = 'All'.obs;
-  
-  final filterOptions = ['All', 'Precious Metals', 'Base Metals'];
+  final filterOptions = ['All'];
+
+  static const _fixedList = [
+    ('Copper',        'HG', 'Base Metals'),
+    ('Gold',          'GC', 'Precious Metals'),
+    ('Silver',        'SI', 'Precious Metals'),
+    ('WTI Crude Oil', 'CL', 'Energy'),
+    ('Brent Crude Oil','OIL','Energy'),
+    ('Natural Gas',   'NG', 'Energy'),
+    ('Platinum',      'PL', 'Precious Metals'),
+    ('Palladium',     'PA', 'Precious Metals'),
+  ];
+
+  static const _matchKeywords = [
+    ['Copper'],
+    ['Gold'],
+    ['Silver'],
+    ['WTI', 'Crude Oil'],
+    ['Brent'],
+    ['Natural Gas'],
+    ['Platinum'],
+    ['Palladium'],
+  ];
 
   WatchlistService? _watchlistService;
   Timer? _refreshTimer;
@@ -43,85 +63,82 @@ class USComexController extends GetxController {
   }
 
   void _startAutoRefresh() {
-    // Refresh every 30 minutes to conserve API quota (100 requests/month free)
-    _refreshTimer = Timer.periodic(const Duration(minutes: 30), (_) {
-      loadData();
-    });
+    _refreshTimer = Timer.periodic(const Duration(minutes: 30), (_) => loadData());
   }
 
-  // Filtered metals based on selected filter
-  List<ComexMetal> get filteredMetals {
-    if (selectedFilter.value == 'All') {
-      return metals;
-    }
-    return metals.where((m) => m.category == selectedFilter.value).toList();
-  }
+  List<ComexMetal> get filteredMetals => metals;
+  void setFilter(String filter) => selectedFilter.value = filter;
 
-  void setFilter(String filter) {
-    selectedFilter.value = filter;
-  }
-
-  List<String> get watchlistIds {
-    if (_watchlistService == null) return [];
-    return _watchlistService!.watchlistItems.map((item) => item.id).toList();
-  }
+  List<String> get watchlistIds =>
+      _watchlistService?.watchlistItems.map((i) => i.id).toList() ?? [];
 
   Future<void> loadData() async {
     try {
       isLoading.value = true;
       hasError.value = false;
-      errorMessage.value = '';
 
-      final scraper = Get.put(FX678ScraperService());
-      
-      // Fetch COMEX data from scraper
-      final scrapedData = await scraper.fetchCOMEX();
-      
-      if (scrapedData.isEmpty) {
-        hasError.value = true;
-        errorMessage.value = 'Failed to fetch COMEX prices.\nSource unavailable or network issue.';
-        metals.value = [];
-        dataSource.value = 'No Data';
-        return;
-      }
-      
       final now = DateTime.now();
-      final List<ComexMetal> comexMetals = [];
-      
-      for (final item in scrapedData) {
-        String category = 'Precious Metals';
-        if (item.name.contains('Copper')) {
-          category = 'Base Metals';
+      final base = List.generate(_fixedList.length, (i) => ComexMetal(
+        id: 'comex_${_fixedList[i].$2.toLowerCase()}',
+        symbol: _fixedList[i].$2,
+        name: _fixedList[i].$1,
+        contract: 'Front Month',
+        lastPrice: null,
+        high: null,
+        low: null,
+        change: null,
+        changePercent: null,
+        lastUpdated: now,
+        category: _fixedList[i].$3,
+      ));
+
+      try {
+        final scraper = Get.put(FX678ScraperService());
+        final scraped = await scraper.fetchCOMEX();
+        if (scraped.isNotEmpty) {
+          for (int i = 0; i < base.length; i++) {
+            final keywords = _matchKeywords[i];
+            final match = scraped.firstWhereOrNull((s) =>
+              keywords.any((kw) => s.name.toUpperCase().contains(kw.toUpperCase())),
+            );
+            if (match != null) {
+              base[i] = ComexMetal(
+                id: base[i].id,
+                symbol: base[i].symbol,
+                name: base[i].name,
+                contract: base[i].contract,
+                lastPrice: match.price == 0 ? null : match.price,
+                high: match.high == 0 ? null : match.high,
+                low: match.low == 0 ? null : match.low,
+                change: match.change,
+                changePercent: match.changePercent,
+                lastUpdated: now,
+                category: base[i].category,
+              );
+            }
+          }
+          dataSource.value = 'COMEX/NYMEX (Live)';
+        } else {
+          dataSource.value = 'Scraper Unavailable';
         }
-        
-        comexMetals.add(ComexMetal(
-          id: 'comex_${item.symbol.toLowerCase()}',
-          symbol: item.symbol,
-          name: item.name,
-          contract: 'Front Month',
-          lastPrice: item.price,
-          high: item.high,
-          low: item.low,
-          change: item.change,
-          changePercent: item.changePercent,
-          lastUpdated: now,
-          category: category,
-        ));
+      } catch (e) {
+        debugPrint('COMEX scraper error: $e');
+        dataSource.value = 'Scraper Error';
       }
-      
-      metals.value = comexMetals;
-      dataSource.value = 'FX678 (Scraped)';
-      debugPrint('✅ Loaded ${comexMetals.length} COMEX metals from FX678 Scraper');
-      
+
+      metals.value = base;
+      debugPrint('✅ COMEX: ${base.where((m) => m.lastPrice != null).length}/${base.length} prices loaded');
     } catch (e) {
-      debugPrint('Error loading COMEX data: $e');
-      hasError.value = true;
-      errorMessage.value = e.toString();
-      metals.value = [];
-      dataSource.value = 'Error';
+      debugPrint('Error in COMEX loadData: $e');
     } finally {
       isLoading.value = false;
+      isRefreshing.value = false;
     }
+  }
+
+  Future<void> refreshData() async {
+    isRefreshing.value = true;
+    await loadData();
   }
 
   @override
@@ -130,19 +147,14 @@ class USComexController extends GetxController {
     super.onClose();
   }
 
-  Future<void> refreshData() async {
-    await loadData();
-  }
-
   void toggleWatchlist(String id) {
     if (_watchlistService == null) {
       Helpers.showError('Watchlist service not available');
       return;
     }
-    
     final metal = metals.firstWhereOrNull((m) => m.id == id);
     if (metal == null) return;
-    
+
     if (_watchlistService!.isInWatchlist(id)) {
       _watchlistService!.removeFromWatchlist(id);
       Helpers.showSuccess('Removed from watchlist');
@@ -152,9 +164,9 @@ class USComexController extends GetxController {
           symbol: metal.symbol,
           name: metal.name,
           exchange: 'COMEX',
-          price: metal.lastPrice,
-          change: metal.change,
-          changePercent: metal.changePercent,
+          price: metal.lastPrice ?? 0,
+          change: metal.change ?? 0,
+          changePercent: metal.changePercent ?? 0,
           currency: 'USD',
         ).copyWith(id: id),
       );
@@ -165,21 +177,20 @@ class USComexController extends GetxController {
   }
 }
 
-
 class ComexMetal {
   final String id;
   final String symbol;
   final String name;
   final String contract;
-  final double lastPrice;
-  final double high;
-  final double low;
-  final double change;
-  final double changePercent;
+  final double? lastPrice;
+  final double? high;
+  final double? low;
+  final double? change;
+  final double? changePercent;
   final DateTime lastUpdated;
-  final String category; // Precious Metals, Base Metals
+  final String category;
 
-  ComexMetal({
+  const ComexMetal({
     required this.id,
     required this.symbol,
     required this.name,
@@ -192,4 +203,6 @@ class ComexMetal {
     required this.lastUpdated,
     required this.category,
   });
+
+  bool get hasData => lastPrice != null;
 }

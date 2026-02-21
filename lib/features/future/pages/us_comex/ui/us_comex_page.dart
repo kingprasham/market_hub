@@ -169,7 +169,8 @@ class USComexPage extends StatelessWidget {
   }
 
   Widget _buildCompactMetalRow(dynamic metal, int index, int totalCount) {
-    final isPositive = metal.change >= 0;
+    final hasData = metal.lastPrice != null;
+    final isPositive = (metal.change ?? 0) >= 0;
 
     return Obx(() {
       controller.watchlistUpdateTrigger.value;
@@ -259,29 +260,33 @@ class USComexPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '\$${metal.lastPrice.toStringAsFixed(2)}',
+                  hasData ? '\$${metal.lastPrice!.toStringAsFixed(2)}' : 'N/A',
                   style: TextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.w700,
+                    color: hasData ? null : Colors.grey[400],
                   ),
                 ),
                 const SizedBox(height: 2),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-                      color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
-                      size: 16,
-                    ),
-                    Text(
-                      '${metal.change.abs().toStringAsFixed(2)} (${metal.changePercent.abs().toStringAsFixed(2)}%)',
-                      style: TextStyles.caption.copyWith(
+                if (hasData)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down,
                         color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
-                        fontWeight: FontWeight.w600,
+                        size: 16,
                       ),
-                    ),
-                  ],
-                ),
+                      Text(
+                        '${metal.change!.abs().toStringAsFixed(2)} (${metal.changePercent!.abs().toStringAsFixed(2)}%)',
+                        style: TextStyles.caption.copyWith(
+                          color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Text('—', style: TextStyles.caption.copyWith(color: Colors.grey[400])),
               ],
             ),
           ],
