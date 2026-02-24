@@ -467,7 +467,7 @@ class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
             border: Border.all(color: ColorConstants.dividerColor),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.02),
+                color: Colors.black.withValues(alpha: 0.02),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -478,7 +478,7 @@ class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 24),
@@ -521,7 +521,7 @@ class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 48, color: ColorConstants.textHint.withOpacity(0.5)),
+          Icon(Icons.inventory_2_outlined, size: 48, color: ColorConstants.textHint.withValues(alpha: 0.5)),
           const SizedBox(height: 12),
           Text(
             'No items available in this category',
