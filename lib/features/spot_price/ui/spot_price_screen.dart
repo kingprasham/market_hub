@@ -10,6 +10,9 @@ import '../../../data/models/market/non_ferrous_sheet_data.dart';
 import '../controller/spot_price_controller.dart';
 import '../../home/ui/widgets/side_menu.dart';
 
+import 'package:intl/intl.dart';
+import '../../../shared/widgets/common/common_app_bar_title.dart';
+
 class SpotPriceScreen extends GetView<SpotPriceController> {
   const SpotPriceScreen({super.key});
 
@@ -21,17 +24,28 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text(
-          'Spot Prices',
-          style: TextStyles.h4.copyWith(color: ColorConstants.textPrimary),
-        ),
+        title: Obx(() => CommonAppBarTitle(
+          title: 'Spot Prices',
+          subtitle: controller.lastUpdated.value != null
+              ? 'Last Updated: ${DateFormat('hh:mm:ss a').format(controller.lastUpdated.value!)}'
+              : 'Updating...',
+        )),
         actions: [
-          IconButton(
-            onPressed: controller.fetchAllData,
-            icon: const Icon(
-              Icons.refresh,
-              color: ColorConstants.textPrimary,
-            ),
+          Obx(() => controller.isRefreshing.value
+              ? const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 24, height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : IconButton(
+                  onPressed: controller.refreshData,
+                  icon: const Icon(
+                    Icons.refresh,
+                    color: ColorConstants.textPrimary,
+                  ),
+                ),
           ),
         ],
       ),

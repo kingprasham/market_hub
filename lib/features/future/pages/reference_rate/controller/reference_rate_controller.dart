@@ -75,10 +75,8 @@ class ReferenceRateController extends GetxController {
   }
 
   void _startAutoRefresh() {
-    // Refresh every 5 minutes
-    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (_) {
-      loadData();
-    });
+    // Refresh every 15 seconds
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) => loadData());
   }
 
   void setFilter(String filter) {
@@ -87,7 +85,9 @@ class ReferenceRateController extends GetxController {
 
   Future<void> loadData() async {
     try {
-      isLoading.value = true;
+      if (referenceRates.isEmpty && sbiTableRows.isEmpty && rbiTableRows.isEmpty) {
+        isLoading.value = true;
+      }
       hasError.value = false;
       errorMessage.value = '';
       

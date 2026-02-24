@@ -4,6 +4,8 @@ import '../../../core/constants/color_constants.dart';
 import '../controller/search_controller.dart';
 import 'package:shimmer/shimmer.dart';
 
+import '../../../shared/widgets/common/app_logo.dart';
+
 class SearchPage extends GetView<SearchController> {
   const SearchPage({super.key});
 
@@ -14,8 +16,17 @@ class SearchPage extends GetView<SearchController> {
       appBar: AppBar(
         backgroundColor: ColorConstants.surfaceColor,
         elevation: 0,
-        title: _buildSearchBar(),
+        title: Row(
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(left: 16),
+              child: AppLogo(),
+            ),
+            Expanded(child: _buildSearchBar()),
+          ],
+        ),
         titleSpacing: 0,
+        automaticallyImplyLeading: false,
       ),
       body: Obx(() {
         if (controller.searchQuery.isEmpty) {

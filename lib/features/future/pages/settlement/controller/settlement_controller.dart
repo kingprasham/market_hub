@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:get/get.dart';
 import '../../../../../core/services/google_sheets_service.dart';
 
@@ -6,6 +7,7 @@ class SettlementController extends GetxController {
   final settlementData = <SettlementModel>[].obs;
   final hasError = false.obs;
   final errorMessage = ''.obs;
+  Timer? _refreshTimer;
 
   @override
   void onInit() {
@@ -19,12 +21,30 @@ class SettlementController extends GetxController {
     }
     
     ever(sheetsService.isLoading, (loading) {
-      isLoading.value = loading;
+      if (loading) {
+        if (settlementData.isEmpty) {
+          isLoading.value = true;
+        }
+      } else {
+        isLoading.value = false;
+      }
     });
+
+    _startAutoRefresh(); // Start auto-refresh on init
+  }
+
+  @override
+  void onClose() {
+    _refreshTimer?.cancel(); // Cancel timer on close
+    super.onClose();
   }
 
   Future<void> refreshData() async {
     final sheetsService = Get.find<GoogleSheetsService>();
     await sheetsService.fetchFuturesData();
+  }
+
+  void _startAutoRefresh() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) => refreshData()); // Calls refreshData
   }
 }

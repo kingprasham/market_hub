@@ -52,7 +52,7 @@ class LondonLMEController extends GetxController {
   }
 
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(minutes: 30), (_) => loadData());
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) => loadData());
   }
 
   List<LMEMetal> get filteredMetals => metals;
@@ -64,7 +64,9 @@ class LondonLMEController extends GetxController {
 
   Future<void> loadData() async {
     try {
-      isLoading.value = true;
+      if (metals.isEmpty) {
+        isLoading.value = true;
+      }
       hasError.value = false;
 
       // Build base list with N/A values

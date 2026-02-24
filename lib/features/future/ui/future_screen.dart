@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/color_constants.dart';
 import '../../../core/constants/text_styles.dart';
@@ -15,6 +16,8 @@ import '../pages/warehouse_stock/ui/warehouse_stock_page.dart';
 import '../pages/settlement/ui/settlement_page.dart';
 import '../../home/ui/widgets/side_menu.dart';
 
+import '../../../shared/widgets/common/common_app_bar_title.dart';
+
 class FutureScreen extends GetView<FutureController> {
   const FutureScreen({super.key});
 
@@ -26,10 +29,12 @@ class FutureScreen extends GetView<FutureController> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text(
-          'Future Prices',
-          style: TextStyles.h4.copyWith(color: ColorConstants.textPrimary),
-        ),
+        title: Obx(() => CommonAppBarTitle(
+          title: 'Future Prices',
+          subtitle: controller.lastUpdated.value != null
+              ? 'Last Updated: ${DateFormat('hh:mm:ss a').format(controller.lastUpdated.value!)}'
+              : 'Updating...',
+        )),
         actions: [
           Obx(() => controller.isRefreshing.value
             ? const Padding(

@@ -11,6 +11,10 @@ import '../../../data/models/market/fx_model.dart';
 import '../pages/london_lme/controller/london_lme_controller.dart';
 import '../pages/china_shfe/controller/china_shfe_controller.dart';
 import '../pages/us_comex/controller/us_comex_controller.dart';
+import '../pages/fx/controller/fx_controller.dart';
+import '../pages/reference_rate/controller/reference_rate_controller.dart';
+import '../pages/settlement/controller/settlement_controller.dart';
+import '../pages/warehouse_stock/controller/warehouse_stock_controller.dart';
 
 class FutureController extends GetxController with GetSingleTickerProviderStateMixin {
   final selectedTabIndex = 0.obs;
@@ -32,11 +36,12 @@ class FutureController extends GetxController with GetSingleTickerProviderStateM
   StreamSubscription? _dataSubscription;
   WebSocketService? _wsService;
   Timer? _autoRefreshTimer;
+  final lastUpdated = Rxn<DateTime>();
 
   final tabs = ['London', 'China', 'COMEX', 'FX', 'Reference', 'Warehouse', 'Settlement'];
 
-  // Auto-refresh interval (5 minutes)
-  static const int refreshIntervalSeconds = 300;
+  // Auto-refresh interval (15 seconds)
+  static const int refreshIntervalSeconds = 15;
 
   @override
   void onInit() {
@@ -54,7 +59,6 @@ class FutureController extends GetxController with GetSingleTickerProviderStateM
       if (!isLoading.value && !isRefreshing.value) {
         debugPrint('Auto-refreshing future data...');
         fetchAllData();
-        _loadReferenceRatesFromService();
       }
     });
   }
@@ -253,7 +257,19 @@ class FutureController extends GetxController with GetSingleTickerProviderStateM
   }
 
   Future<void> fetchAllData() async {
-    isLoading.value = true;
+    // Only show loading if we have NO data in any sub-controller yet (initial load)
+    // We check Get.isRegistered and then if they have data.
+    bool hasAnyData = false;
+    try {
+      if (Get.isRegistered<LondonLMEController>() && Get.find<LondonLMEController>().metals.isNotEmpty) hasAnyData = true;
+      if (!hasAnyData && Get.isRegistered<ChinaSHFEController>() && Get.find<ChinaSHFEController>().metals.isNotEmpty) hasAnyData = true;
+      if (!hasAnyData && Get.isRegistered<USComexController>() && Get.find<USComexController>().metals.isNotEmpty) hasAnyData = true;
+      if (!hasAnyData && Get.isRegistered<FxController>() && Get.find<FxController>().currencyPairs.isNotEmpty) hasAnyData = true;
+    } catch (_) {}
+
+    if (!hasAnyData) {
+      isLoading.value = true;
+    }
 
     try {
       // NOTE: Individual page controllers (LondonLMEController, FxController, etc.)
@@ -272,6 +288,18 @@ class FutureController extends GetxController with GetSingleTickerProviderStateM
         if (Get.isRegistered<USComexController>()) {
           Get.find<USComexController>().refreshData();
         }
+        if (Get.isRegistered<FxController>()) {
+          Get.find<FxController>().refreshData();
+        }
+        if (Get.isRegistered<ReferenceRateController>()) {
+          Get.find<ReferenceRateController>().refreshData();
+        }
+        if (Get.isRegistered<SettlementController>()) {
+          Get.find<SettlementController>().refreshData();
+        }
+        if (Get.isRegistered<WarehouseStockController>()) {
+          Get.find<WarehouseStockController>().refreshData();
+        }
       } catch (e) {
         debugPrint('Error refreshing sub-controllers: $e');
       }
@@ -284,6 +312,7 @@ class FutureController extends GetxController with GetSingleTickerProviderStateM
     } catch (e) {
       debugPrint('Error in fetchAllData: $e');
     } finally {
+      lastUpdated.value = DateTime.now();
       isLoading.value = false;
     }
   }

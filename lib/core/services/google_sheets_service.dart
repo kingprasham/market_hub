@@ -49,8 +49,8 @@ class GoogleSheetsService extends GetxService {
   // Auto-refresh timer
   Timer? _refreshTimer;
 
-  // Refresh interval (5 minutes)
-  static const int refreshIntervalSeconds = 300;
+  // Refresh interval (15 seconds)
+  static const int refreshIntervalSeconds = 15;
 
   // Your Google Sheet ID
   static const String defaultSheetId = '1BClDDU2oqGyhHyiDw0Kh1GZo8vcdKqNE2zq1gLkS0mw';
@@ -217,11 +217,14 @@ class GoogleSheetsService extends GetxService {
   }) async {
     if (isLoading.value) return _sheetsCache;
 
+    // Only show loading if we have NO cached sheets at all
+    if (_sheetsCache.isEmpty) {
+      isLoading.value = true;
+    }
+
     final id = sheetId ?? defaultSheetId;
 
     try {
-      isLoading.value = true;
-
       // Fetch all sheets using their GIDs
       final sheetsToFetch = sheetNames ?? sheetGids.keys.toList();
 
@@ -1728,12 +1731,22 @@ class GoogleSheetsService extends GetxService {
   static const String futuresSheetGid = '914913757';
 
   Future<void> fetchFuturesData() async {
-    // Parse the new sheet directly
-    final sheet = await _fetchSheetByGid(futuresSheetId, 'FUTURES', futuresSheetGid);
-    if (sheet == null) return;
+    // Only show loading if key futures data is missing
+    if (lmeWarehouseData.isEmpty && settlementData.isEmpty) {
+      isLoading.value = true;
+    }
+    try {
+      // Parse the new sheet directly
+      final sheet = await _fetchSheetByGid(futuresSheetId, 'FUTURES', futuresSheetGid);
+      if (sheet == null) return;
 
-    _parseLmeWarehouseData(sheet);
-    _parseSettlementData(sheet);
+      _parseLmeWarehouseData(sheet);
+      _parseSettlementData(sheet);
+    } catch (e) {
+      debugPrint('Error fetching futures data: $e');
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   void _parseLmeWarehouseData(SheetData sheet) {

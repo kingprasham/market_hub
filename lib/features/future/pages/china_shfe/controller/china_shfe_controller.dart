@@ -75,7 +75,7 @@ class ChinaSHFEController extends GetxController {
   }
 
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(minutes: 30), (_) => loadData());
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) => loadData());
   }
 
   List<SHFEMetal> get filteredMetals => metals;
@@ -88,7 +88,9 @@ class ChinaSHFEController extends GetxController {
 
   Future<void> loadData() async {
     try {
-      isLoading.value = true;
+      if (metals.isEmpty) {
+        isLoading.value = true;
+      }
       hasError.value = false;
 
       final now = DateTime.now();
@@ -96,7 +98,7 @@ class ChinaSHFEController extends GetxController {
         id: 'shfe_${_fixedList[i].$2.toLowerCase()}',
         symbol: _fixedList[i].$2,
         name: 'SHFE ${_fixedList[i].$1}',
-        contract: 'Main Contract',
+        contract: 'Main Continuous',
         lastPrice: null,
         high: null,
         low: null,

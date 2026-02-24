@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../core/constants/color_constants.dart';
+import '../common/common_app_bar_title.dart';
 
 class EnhancedWebView extends StatefulWidget {
   final String url;
@@ -164,7 +165,7 @@ class _EnhancedWebViewState extends State<EnhancedWebView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: CommonAppBarTitle(title: widget.title),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0.5,

@@ -9,6 +9,8 @@ import '../../../data/models/watchlist/watchlist_item_model.dart';
 import '../controller/watchlist_controller.dart';
 import '../widgets/watchlist_dialogs.dart';
 
+import '../../../shared/widgets/common/common_app_bar_title.dart';
+
 class WatchlistScreen extends GetView<WatchlistController> {
   const WatchlistScreen({super.key});
 
@@ -35,18 +37,9 @@ class WatchlistScreen extends GetView<WatchlistController> {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
-      title: Obx(() => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Watchlist',
-            style: TextStyles.h4.copyWith(color: ColorConstants.textPrimary),
-          ),
-          Text(
-            '${controller.itemCount} items${controller.starredCount > 0 ? ' | ${controller.starredCount} starred' : ''}',
-            style: TextStyles.caption.copyWith(color: ColorConstants.textSecondary),
-          ),
-        ],
+      title: Obx(() => CommonAppBarTitle(
+        title: 'Watchlist',
+        subtitle: '${controller.itemCount} items${controller.starredCount > 0 ? ' | ${controller.starredCount} starred' : ''}',
       )),
       actions: [
         Obx(() => IconButton(

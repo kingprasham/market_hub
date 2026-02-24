@@ -10,6 +10,7 @@ import '../controller/alerts_controller.dart';
 import '../../../app/routes/app_routes.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../home/ui/widgets/side_menu.dart';
+import '../../../shared/widgets/common/common_app_bar_title.dart';
 
 class AlertsScreen extends GetView<AlertsController> {
   const AlertsScreen({super.key});
@@ -40,10 +41,7 @@ class AlertsScreen extends GetView<AlertsController> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text(
-          'News & Alerts',
-          style: TextStyles.h4.copyWith(color: ColorConstants.textPrimary),
-        ),
+        title: const CommonAppBarTitle(title: 'News & Alerts'),
         actions: [
           IconButton(
             onPressed: controller.fetchAllData,

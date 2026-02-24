@@ -7,6 +7,8 @@ import '../../home/ui/widgets/side_menu.dart';
 import '../controller/forex_controller.dart';
 import '../../../data/models/forex/sbi_forex_rate_model.dart';
 
+import '../../../shared/widgets/common/common_app_bar_title.dart';
+
 class ForexScreen extends GetView<ForexController> {
   const ForexScreen({super.key});
 
@@ -16,7 +18,7 @@ class ForexScreen extends GetView<ForexController> {
       drawer: const SideMenu(),
       backgroundColor: ColorConstants.backgroundColor,
       appBar: AppBar(
-        title: const Text('SBI Forex Rates'),
+        title: const CommonAppBarTitle(title: 'SBI Forex Rates'),
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),

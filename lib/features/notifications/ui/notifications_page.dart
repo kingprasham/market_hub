@@ -5,6 +5,8 @@ import '../../../data/models/notification/notification_model.dart';
 import '../controller/notifications_controller.dart';
 import 'package:intl/intl.dart';
 
+import '../../../shared/widgets/common/common_app_bar_title.dart';
+
 class NotificationsPage extends GetView<NotificationsController> {
   const NotificationsPage({super.key});
 
@@ -13,7 +15,7 @@ class NotificationsPage extends GetView<NotificationsController> {
     return Scaffold(
       backgroundColor: ColorConstants.backgroundColor,
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: const CommonAppBarTitle(title: 'Notifications'),
         backgroundColor: ColorConstants.surfaceColor,
         elevation: 0,
         actions: [

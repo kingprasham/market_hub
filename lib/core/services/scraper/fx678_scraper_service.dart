@@ -359,24 +359,24 @@ class FX678ScraperService {
   };
 
   static const _shfeMapping = {
-    '沪铜': 'SHFE Copper',
-    '沪铝': 'SHFE Aluminium',
-    '沪锌': 'SHFE Zinc',
-    '沪铅': 'SHFE Lead',
-    '沪镍': 'SHFE Nickel',
-    '沪锡': 'SHFE Tin',
-    '沪金': 'SHFE Gold',
-    '沪银': 'SHFE Silver',
-    '不锈钢': 'SHFE SS',
-    '线材': 'SHFE WR',
-    '螺纹': 'SHFE Rebar',
-    '橡胶': 'SHFE Rubber',
+    '沪铜连续': 'SHFE Copper',
+    '沪铝连续': 'SHFE Aluminium',
+    '沪锌连续': 'SHFE Zinc',
+    '沪铅连续': 'SHFE Lead',
+    '沪镍连续': 'SHFE Nickel',
+    '沪锡连续': 'SHFE Tin',
+    '沪金连续': 'SHFE Gold',
+    '沪银连续': 'SHFE Silver',
+    '不锈钢连续': 'SHFE SS',
+    '线材连续': 'SHFE WR',
+    '螺纹连续': 'SHFE Rebar',
+    '橡胶连续': 'SHFE Rubber',
   };
 
   /// CZCE products — Ferro Silicon (SF) and Ferro Manganese Silicon (SM)
   static const _czceMapping = {
-    '硅铁': 'SHFE Ferro Silicon',       // SF — listed on CZCE, displayed under SHFE tab
-    '锰硅': 'SHFE Ferro Manganese Silicon', // SM — listed on CZCE, displayed under SHFE tab
+    '硅铁连续': 'SHFE Ferro Silicon',
+    '锰硅连续': 'SHFE Ferro Manganese Silicon',
   };
 
   static const _comexMapping = {

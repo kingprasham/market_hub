@@ -41,7 +41,7 @@ class FxController extends GetxController {
   }
 
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (_) => loadData());
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) => loadData());
   }
 
   void _initService() {
@@ -71,7 +71,9 @@ class FxController extends GetxController {
 
   Future<void> loadData() async {
     try {
-      isLoading.value = true;
+      if (currencyPairs.isEmpty) {
+        isLoading.value = true;
+      }
       hasError.value = false;
 
       // Build base list with all N/A

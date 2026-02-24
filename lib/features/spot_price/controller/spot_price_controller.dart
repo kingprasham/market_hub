@@ -63,6 +63,8 @@ class SpotPriceController extends GetxController {
   MetalsDevService? _metalsDevService;
   WatchlistService? _watchlistService;
   Timer? _autoRefreshTimer;
+  // Last update time
+  final lastUpdated = Rxn<DateTime>();
   
   // Watchlist trigger
   final watchlistUpdateTrigger = 0.obs;
@@ -70,7 +72,7 @@ class SpotPriceController extends GetxController {
   final tabs = ['Base Metal', 'BME'];
 
   // Auto-refresh intervals (in seconds)
-  static const int refreshIntervalSeconds = 300; // 5 minutes
+  static const int refreshIntervalSeconds = 15;
 
   @override
   void onInit() {
@@ -133,12 +135,7 @@ class SpotPriceController extends GetxController {
     _autoRefreshTimer = Timer.periodic(const Duration(seconds: refreshIntervalSeconds), (timer) {
       if (!isLoading.value && !isRefreshing.value) {
         debugPrint('Auto-refreshing spot prices...');
-        _loadGoogleSheetsData();
-        fetchBmePrices();
-        if (_sheetsService != null) {
-          _sheetsService!.fetchFerrousData();
-          _sheetsService!.fetchMinorData();
-        }
+        refreshData();
       }
     });
   }
@@ -385,7 +382,10 @@ class SpotPriceController extends GetxController {
   }
 
   Future<void> fetchAllData() async {
-    isLoading.value = true;
+    // Only show loading shimmer if we have no data yet
+    if (baseMetalPrices.isEmpty && bmePrices.isEmpty) {
+      isLoading.value = true;
+    }
 
     try {
       final futures = <Future>[
@@ -409,6 +409,7 @@ class SpotPriceController extends GetxController {
     } catch (e) {
       debugPrint('Error fetching data: $e');
     } finally {
+      lastUpdated.value = DateTime.now();
       isLoading.value = false;
     }
   }
