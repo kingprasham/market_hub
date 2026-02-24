@@ -52,16 +52,17 @@ class NonFerrousSheetData {
       _CityConfig('KOLKATA', nameCol: 22, price1Col: 23),
       _CityConfig('JAMNAGAR', nameCol: 25, price1Col: 26),
       _CityConfig('JAGADHRI', nameCol: 28, price1Col: 29),
-      _CityConfig('MORADABAD', nameCol: 30, price1Col: 31),
-      _CityConfig('HATHRAS', nameCol: 32, price1Col: 33),
-      _CityConfig('JALANDHAR', nameCol: 34, price1Col: 35),
-      _CityConfig('BME', nameCol: 37, price1Col: 38),
+      _CityConfig('MORADABAD', nameCol: 31, price1Col: 32),
+      _CityConfig('HATHRAS', nameCol: 34, price1Col: 35),
+      _CityConfig('JALANDHAR', nameCol: 37, price1Col: 38),
+      _CityConfig('BME', nameCol: 40, price1Col: 41),
     ];
 
     // Known metal section headers that appear within city columns
     final knownMetalHeaders = {
       'COPPER', 'BRASS', 'ALUMINIUM', 'GUN METAL', 'ZINC', 'STEEL',
-      'NICKEL', 'TIN', 'LEAD', 'NICKEL CATHODE',
+      'NICKEL', 'TIN', 'LEAD', 'NICKEL CATHODE', 'BME MINOR METAL', 
+      'MUMBAI MINOR METAL & FERRO'
     };
 
     // Bottom section headers (Delhi-only expanded sections from row 31+)
