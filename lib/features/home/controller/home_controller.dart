@@ -8,10 +8,13 @@ import '../../../core/services/google_sheets_service.dart';
 import '../../../core/services/watchlist_service.dart';
 import '../../../core/services/news_api_service.dart';
 import '../../../core/services/rss_news_service.dart';
+import '../../../core/services/admin_api_service.dart';
 import '../../../data/models/content/news_model.dart';
+import '../../../data/models/content/update_model.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../../data/models/watchlist/watchlist_item_model.dart';
 import '../../../data/models/market/price_change_model.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../app/routes/app_routes.dart';
 
 class HomeController extends GetxController {
@@ -29,6 +32,9 @@ class HomeController extends GetxController {
 
   // News preview for homepage
   final newsPreview = <NewsModel>[].obs;
+  
+  // Home Updates for homepage
+  final homeUpdates = <UpdateModel>[].obs;
 
   // SBI TT Rates
   final sbiTTRates = Rxn<SbiTTRates>();
@@ -59,6 +65,7 @@ class HomeController extends GetxController {
   WatchlistService? _watchlistService;
   NewsApiService? _newsApiService;
   RssNewsService? _rssNewsService;
+  AdminApiService? _adminApiService;
   Timer? _autoRefreshTimer;
 
   // Ad carousel autoscroll
@@ -253,35 +260,68 @@ class HomeController extends GetxController {
     });
   }
   
+  Future<void> _loadHomeUpdates() async {
+    if (_adminApiService == null) return;
+    try {
+      debugPrint('[HomeController] Fetching home updates from: ${ApiConstants.adminHomeUpdates}');
+      final updatesData = await _adminApiService!.getHomeUpdates();
+      debugPrint('[HomeController] Received ${updatesData.length} home updates from fallback/API');
+      
+      if (updatesData.isNotEmpty) {
+        final updates = updatesData.map((json) => UpdateModel.fromJson(json)).toList();
+        homeUpdates.assignAll(updates);
+        debugPrint('[HomeController] Successfully matched ${homeUpdates.length} updates');
+      } else {
+        debugPrint('[HomeController] No home updates found in API response');
+      }
+    } catch (e) {
+      debugPrint('[HomeController] Error loading home updates: $e');
+    }
+  }
+  
   void _initNewsService() {
     try {
-      _rssNewsService = Get.find<RssNewsService>();
-      // Fetch news on init
+      _adminApiService = Get.find<AdminApiService>();
       _loadNewsPreview();
     } catch (e) {
-      debugPrint('RssNewsService not found, falling back to NewsApiService');
+      debugPrint('AdminApiService not found, falling back to RSS');
       try {
-        _newsApiService = Get.find<NewsApiService>();
-        _loadNewsPreviewFromApi();
+        _rssNewsService = Get.find<RssNewsService>();
+        _loadNewsPreview();
       } catch (e) {
-        debugPrint('NewsApiService not found');
+        debugPrint('RSS services not found');
       }
     }
   }
   
   Future<void> _loadNewsPreview() async {
-    if (_rssNewsService == null) {
-      await _loadNewsPreviewFromApi();
-      return;
+    // Primary: Admin API News
+    if (_adminApiService != null) {
+      try {
+        final newsData = await _adminApiService!.getNews();
+        if (newsData.isNotEmpty) {
+          final newsList = newsData.map((json) => NewsModel.fromJson(json)).toList();
+          newsPreview.assignAll(newsList.take(5).toList());
+          debugPrint('Loaded ${newsPreview.length} news preview items from Admin API');
+          return;
+        }
+      } catch (e) {
+        debugPrint('Error loading news from Admin API for home: $e');
+      }
+    }
+
+    // Fallback: RSS News
+    if (_rssNewsService != null) {
+      final news = await _rssNewsService!.fetchNews();
+      if (news.isNotEmpty) {
+        newsPreview.assignAll(news.take(5).toList());
+        debugPrint('Loaded ${newsPreview.length} news preview items from RSS fallback');
+        return;
+      }
     }
     
-    final news = await _rssNewsService!.fetchNews();
-    if (news.isNotEmpty) {
-      newsPreview.assignAll(news.take(5).toList());
-    } else {
-      // Fallback to API if RSS fails
-      await _loadNewsPreviewFromApi();
-    }
+    // Last effort: NewsApiService
+    await _loadNewsPreviewFromApi();
   }
   
   Future<void> _loadNewsPreviewFromApi() async {
@@ -326,6 +366,7 @@ class HomeController extends GetxController {
     await Future.wait([
       _loadExternalData(),
       _loadGoogleSheetsData(),
+      _loadHomeUpdates(),
     ]);
 
     isLoading.value = false;
@@ -617,6 +658,7 @@ class HomeController extends GetxController {
     _autoRefreshTimer = Timer.periodic(const Duration(minutes: 3), (timer) {
       debugPrint('Auto-refreshing content...');
       _loadGoogleSheetsData();
+      _loadHomeUpdates();
     });
   }
 
@@ -626,6 +668,7 @@ class HomeController extends GetxController {
     await Future.wait([
       _loadExternalData(),
       _loadGoogleSheetsData(),
+      _loadHomeUpdates(),
     ]);
 
     _updateStarredItems();

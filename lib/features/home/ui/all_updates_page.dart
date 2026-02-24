@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/color_constants.dart';
 import '../../../core/constants/text_styles.dart';
-import '../../../data/models/market/price_change_model.dart';
+import '../../../core/utils/formatters.dart';
 import '../controller/home_controller.dart';
+import '../../../app/routes/app_routes.dart';
 
-/// Full-page view of all detected Non-Ferrous price changes.
+/// Full-page view of all Market Hub Updates.
 class AllUpdatesPage extends StatelessWidget {
   const AllUpdatesPage({super.key});
 
@@ -15,44 +16,61 @@ class AllUpdatesPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Non-Ferrous Price Changes'),
+        title: Text(
+          'Market Hub Updates',
+          style: TextStyles.h3.copyWith(
+            color: ColorConstants.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0.5,
+        foregroundColor: ColorConstants.textPrimary,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => Get.back(),
+        ),
       ),
       backgroundColor: ColorConstants.backgroundColor,
       body: Column(
         children: [
           const Divider(height: 1, color: ColorConstants.dividerColor),
 
-          // ─── Change list ────────────────────────────────────────────
+          // ─── Updates list ───────────────────────────────────────────
           Expanded(
             child: Obx(() {
-              final changes = controller.priceChanges
-                      .where((c) => c.category == 'Non-Ferrous')
-                      .toList();
+              final updates = controller.homeUpdates;
 
-              if (changes.isEmpty) {
+              if (updates.isEmpty) {
                 return Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.check_circle_outline_rounded,
-                        size: 48,
-                        color: ColorConstants.textHint.withOpacity(0.5),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: ColorConstants.primaryOrange.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.rss_feed_rounded,
+                          size: 40,
+                          color: ColorConstants.primaryOrange,
+                        ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
                       Text(
-                        'No Non-Ferrous changes detected',
+                        'No updates available',
                         style: TextStyles.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: ColorConstants.textHint,
+                          fontWeight: FontWeight.w700,
+                          color: ColorConstants.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Changes will appear as prices update',
+                        'Updates will appear here as they are posted',
                         style: TextStyles.caption.copyWith(
                           color: ColorConstants.textHint,
                         ),
@@ -64,107 +82,146 @@ class AllUpdatesPage extends StatelessWidget {
 
               return ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: changes.length,
+                itemCount: updates.length,
                 itemBuilder: (context, index) {
-                  return _buildChangeCard(changes[index]);
+                  final update = updates[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        if (update.hasPdf && update.pdfUrl != null) {
+                          Get.toNamed(AppRoutes.pdfViewer, arguments: {
+                            'url': update.pdfUrl,
+                            'title': update.title,
+                          });
+                        } else {
+                          Get.dialog(
+                            AlertDialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              title: Text(update.title, style: TextStyles.h3),
+                              content: SingleChildScrollView(
+                                child: Text(update.description, style: TextStyles.bodyMedium),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Get.back(),
+                                  child: const Text('OK', style: TextStyle(color: ColorConstants.primaryOrange, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      if (update.isImportant)
+                                        Container(
+                                          margin: const EdgeInsets.only(right: 8),
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            'NEW',
+                                            style: TextStyle(
+                                              color: Colors.red,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 9,
+                                            ),
+                                          ),
+                                        ),
+                                      Expanded(
+                                        child: Text(
+                                          update.title,
+                                          style: TextStyles.bodyMedium.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: ColorConstants.textPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    update.description,
+                                    style: TextStyles.bodySmall.copyWith(
+                                      color: ColorConstants.textSecondary,
+                                      height: 1.5,
+                                    ),
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.access_time_rounded, size: 14, color: ColorConstants.textHint),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        Formatters.formatRelativeTime(update.createdAt),
+                                        style: TextStyles.labelSmall.copyWith(color: ColorConstants.textHint),
+                                      ),
+                                      if (update.hasPdf) ...[
+                                        const SizedBox(width: 16),
+                                        const Icon(Icons.picture_as_pdf_outlined, size: 14, color: Colors.red),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'PDF',
+                                          style: TextStyles.labelSmall.copyWith(color: Colors.red, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (update.hasImage) ...[
+                              const SizedBox(width: 16),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  update.imageUrl!,
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 80,
+                                    height: 80,
+                                    color: ColorConstants.dividerColor,
+                                    child: const Icon(Icons.image_not_supported_outlined, size: 24),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
                 },
               );
             }),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChangeCard(PriceChange change) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Category icon (Non-Ferrous icon)
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: ColorConstants.primaryOrange.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.diamond_outlined,
-              size: 18,
-              color: ColorConstants.primaryOrange,
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // Name + city
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  change.name,
-                  style: TextStyles.bodySmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: ColorConstants.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                if (change.city.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: ColorConstants.primaryOrange.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      change.city,
-                      style: TextStyles.labelSmall.copyWith(
-                        color: ColorConstants.primaryOrange,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 9,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // Old → New price
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                change.newPrice,
-                style: TextStyles.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: ColorConstants.textPrimary,
-                  fontSize: 14,
-                ),
-              ),
-              Text(
-                change.oldPrice,
-                style: TextStyles.labelSmall.copyWith(
-                  color: ColorConstants.textHint,
-                  fontSize: 10,
-                  decoration: TextDecoration.lineThrough,
-                ),
-              ),
-            ],
           ),
         ],
       ),

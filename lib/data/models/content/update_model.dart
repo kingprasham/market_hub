@@ -33,18 +33,30 @@ class UpdateModel {
     }
 
     return UpdateModel(
-      id: json['_id'] ?? json['id'] ?? '',
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
       title: json['title'] ?? '',
       description: json['description'] ?? json['note'] ?? '',
       imageUrl: json['imageUrl'] ?? json['image'],
       pdfUrl: json['pdfUrl'] ?? json['pdf'],
       category: json['category'],
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
+      createdAt: _parseDate(json['createdAt']),
       isImportant: json['isImportant'] ?? false,
       targetPlanIds: parsedTargetPlans,
     );
+  }
+
+  static DateTime _parseDate(dynamic dateStr) {
+    if (dateStr == null || dateStr.toString().isEmpty) return DateTime.now();
+    try {
+      String str = dateStr.toString();
+      // If string doesn't end with Z and doesn't contain a timezone offset, assume it's UTC from PHP
+      if (!str.endsWith('Z') && !RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(str)) {
+        str += 'Z';
+      }
+      return DateTime.parse(str).toLocal();
+    } catch (e) {
+      return DateTime.now();
+    }
   }
 
   Map<String, dynamic> toJson() {

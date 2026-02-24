@@ -56,6 +56,11 @@ class Formatters {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
+    // Handle cases where the server time might be slightly ahead of local time
+    if (difference.inSeconds < 0) {
+      return 'Just now';
+    }
+
     if (difference.inSeconds < 60) {
       return 'Just now';
     } else if (difference.inMinutes < 60) {

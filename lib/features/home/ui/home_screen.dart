@@ -112,6 +112,11 @@ class HomeScreen extends GetView<HomeController> {
                 child: _buildLivePricesSection(),
               ),
 
+              // ─── Home Updates Section ─────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: _buildHomeUpdatesSection(),
+              ),
+
               const SliverToBoxAdapter(
                 child: SizedBox(height: 100),
               ),
@@ -814,5 +819,271 @@ class HomeScreen extends GetView<HomeController> {
         ),
       ),
     );
+  }
+
+  Widget _buildHomeUpdatesSection() {
+    return Obx(() {
+      final updates = controller.homeUpdates;
+      // If we are loading and have no updates yet, show nothing or a subtle loader
+      if (controller.isLoading.value && updates.isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      return Container(
+        margin: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ─── Header ───────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: ColorConstants.primaryOrange.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.rss_feed_rounded,
+                      size: 20,
+                      color: ColorConstants.primaryOrange,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Market Hub Updates',
+                          style: TextStyles.h3.copyWith(
+                            color: ColorConstants.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'Latest insights & announcements',
+                          style: TextStyles.caption.copyWith(
+                            color: ColorConstants.textHint,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const Divider(height: 1, color: ColorConstants.dividerColor),
+
+            // ─── Update List (Top 3) ──────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: updates.take(3).length,
+                separatorBuilder: (context, index) => const Divider(
+                  height: 1,
+                  indent: 20,
+                  endIndent: 20,
+                  color: ColorConstants.dividerColor,
+                ),
+                itemBuilder: (context, index) {
+                  final update = updates[index];
+                  return InkWell(
+                    onTap: () {
+                      if (update.hasPdf && update.pdfUrl != null) {
+                        Get.toNamed(AppRoutes.pdfViewer, arguments: {
+                          'url': update.pdfUrl,
+                          'title': update.title,
+                        });
+                      } else {
+                        Get.dialog(
+                          AlertDialog(
+                            title: Text(update.title),
+                            content: SingleChildScrollView(
+                              child: Text(update.description),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Get.back(),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    if (update.isImportant)
+                                      Container(
+                                        margin: const EdgeInsets.only(right: 8),
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'NEW',
+                                          style: TextStyles.labelSmall.copyWith(
+                                            color: Colors.red,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 9,
+                                          ),
+                                        ),
+                                      ),
+                                    Expanded(
+                                      child: Text(
+                                        update.title,
+                                        style: TextStyles.bodyMedium.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: ColorConstants.textPrimary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  update.description,
+                                  style: TextStyles.bodySmall.copyWith(
+                                    color: ColorConstants.textSecondary,
+                                    height: 1.4,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.access_time_rounded,
+                                      size: 12,
+                                      color: ColorConstants.textHint.withOpacity(0.8),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      Formatters.formatRelativeTime(update.createdAt),
+                                      style: TextStyles.labelSmall.copyWith(
+                                        color: ColorConstants.textHint,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    if (update.hasPdf) ...[
+                                      const SizedBox(width: 12),
+                                      Icon(
+                                        Icons.picture_as_pdf_outlined,
+                                        size: 14,
+                                        color: Colors.red.withOpacity(0.7),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'PDF Attached',
+                                        style: TextStyles.labelSmall.copyWith(
+                                          color: Colors.red.withOpacity(0.7),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (update.hasImage) ...[
+                            const SizedBox(width: 16),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                update.imageUrl!,
+                                width: 70,
+                                height: 70,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 70,
+                                  height: 70,
+                                  color: ColorConstants.dividerColor,
+                                  child: const Icon(Icons.image_not_supported_outlined, size: 20),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            // ─── View All CTA ─────────────────────────────────────────────
+            if (updates.length > 3)
+              InkWell(
+                onTap: () {
+                  Get.toNamed(AppRoutes.allUpdates);
+                },
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    color: ColorConstants.primaryOrange.withOpacity(0.04),
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'View All Updates',
+                        style: TextStyles.bodySmall.copyWith(
+                          color: ColorConstants.primaryOrange,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.keyboard_arrow_right_rounded,
+                        size: 18,
+                        color: ColorConstants.primaryOrange,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    });
   }
 }

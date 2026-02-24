@@ -42,7 +42,6 @@ class AlertsController extends GetxController {
   static const int circularsInterval = 45; // 45 seconds for circulars
   static const int contentCheckInterval = 15; // Check for new content every 15 seconds
 
-  GoogleSheetsService? _sheetsService;
   NewsApiService? _newsApiService;
   RssNewsService? _rssNewsService;
   AdminApiService? _adminApiService;
@@ -58,9 +57,16 @@ class AlertsController extends GetxController {
     _initWebControllers();
     _initServices();
     _subscribeToSheetUpdates();
+    _handleArguments();
     // Fetch initial data
     _fetchAllNews();
     _startAutoRefresh();
+  }
+
+  void _handleArguments() {
+    if (Get.arguments is Map && Get.arguments['tabIndex'] != null) {
+      selectedTabIndex.value = Get.arguments['tabIndex'];
+    }
   }
 
   void _initWebControllers() {
@@ -109,12 +115,6 @@ class AlertsController extends GetxController {
     }
 
     try {
-      _sheetsService = Get.find<GoogleSheetsService>();
-    } catch (e) {
-      debugPrint('GoogleSheetsService not found');
-    }
-
-    try {
       _rssNewsService = Get.find<RssNewsService>();
     } catch (e) {
       debugPrint('RssNewsService not found');
@@ -156,18 +156,22 @@ class AlertsController extends GetxController {
       final englishNewsData = await _adminApiService!.getNews();
       int newNewsCount = 0;
       if (englishNewsData.isNotEmpty) {
-        final newsList = englishNewsData.map((json) => NewsModel(
-          id: json['id']?.toString() ?? '',
-          title: json['title'] ?? '',
-          description: json['description'] ?? '',
-          imageUrl: json['imageUrl'],
-          pdfUrl: json['pdfUrl'],
-          sourceLink: json['link'],
-          newsType: 'news',
-          targetPlanIds: const ['all'],
-          publishedAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-          createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-        )).toList();
+        final newsList = englishNewsData.map((json) {
+          final newsItem = NewsModel.fromJson(json);
+          // Ensure newsType is set correctly if not in JSON
+          return NewsModel(
+            id: newsItem.id,
+            title: newsItem.title,
+            description: newsItem.description,
+            imageUrl: newsItem.imageUrl,
+            pdfUrl: newsItem.pdfUrl,
+            sourceLink: newsItem.sourceLink,
+            newsType: 'news',
+            targetPlanIds: newsItem.targetPlanIds,
+            publishedAt: newsItem.publishedAt,
+            createdAt: newsItem.createdAt,
+          );
+        }).toList();
 
         newNewsCount = _previousNewsCount > 0 && newsList.length > _previousNewsCount
             ? newsList.length - _previousNewsCount
@@ -182,18 +186,21 @@ class AlertsController extends GetxController {
       final hindiNewsData = await _adminApiService!.getHindiNews();
       int newHindiCount = 0;
       if (hindiNewsData.isNotEmpty) {
-        final hindiNewsList = hindiNewsData.map((json) => NewsModel(
-          id: json['id']?.toString() ?? '',
-          title: json['title'] ?? '',
-          description: json['description'] ?? '',
-          imageUrl: json['imageUrl'],
-          pdfUrl: json['pdfUrl'],
-          sourceLink: json['link'],
-          newsType: 'hindi_news',
-          targetPlanIds: const ['all'],
-          publishedAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-          createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-        )).toList();
+        final hindiNewsList = hindiNewsData.map((json) {
+          final newsItem = NewsModel.fromJson(json);
+          return NewsModel(
+            id: newsItem.id,
+            title: newsItem.title,
+            description: newsItem.description,
+            imageUrl: newsItem.imageUrl,
+            pdfUrl: newsItem.pdfUrl,
+            sourceLink: newsItem.sourceLink,
+            newsType: 'hindi_news',
+            targetPlanIds: newsItem.targetPlanIds,
+            publishedAt: newsItem.publishedAt,
+            createdAt: newsItem.createdAt,
+          );
+        }).toList();
 
         newHindiCount = _previousHindiNewsCount > 0 && hindiNewsList.length > _previousHindiNewsCount
             ? hindiNewsList.length - _previousHindiNewsCount
@@ -208,17 +215,20 @@ class AlertsController extends GetxController {
       final circularsData = await _adminApiService!.getCirculars();
       int newCircularsCount = 0;
       if (circularsData.isNotEmpty) {
-        final circularsList = circularsData.map((json) => NewsModel(
-          id: json['id']?.toString() ?? '',
-          title: json['title'] ?? '',
-          description: json['description'] ?? '',
-          imageUrl: json['imageUrl'],
-          pdfUrl: json['pdfUrl'],
-          newsType: 'circular',
-          targetPlanIds: const ['all'],
-          publishedAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-          createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-        )).toList();
+        final circularsList = circularsData.map((json) {
+          final newsItem = NewsModel.fromJson(json);
+          return NewsModel(
+            id: newsItem.id,
+            title: newsItem.title,
+            description: newsItem.description,
+            imageUrl: newsItem.imageUrl,
+            pdfUrl: newsItem.pdfUrl,
+            newsType: 'circular',
+            targetPlanIds: newsItem.targetPlanIds,
+            publishedAt: newsItem.publishedAt,
+            createdAt: newsItem.createdAt,
+          );
+        }).toList();
 
         newCircularsCount = _previousCircularsCount > 0 && circularsList.length > _previousCircularsCount
             ? circularsList.length - _previousCircularsCount
@@ -248,8 +258,10 @@ class AlertsController extends GetxController {
       }
     } catch (e) {
       debugPrint('Error fetching from Admin API: $e');
-      // Fallback to other sources
-      await _fetchFromFallbackSources();
+      // Only fallback if we have NO data at all
+      if (news.isEmpty && hindiNews.isEmpty) {
+        await _fetchFromFallbackSources();
+      }
     }
   }
 

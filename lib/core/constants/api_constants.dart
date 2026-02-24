@@ -1,7 +1,7 @@
 /// API Constants for Market Hub App
 class ApiConstants {
   // Admin Dashboard Base URL
-  static const String adminBaseUrl = 'https://mehrgrewal.com/markethub/api';
+  static const String adminBaseUrl = 'https://mehrgrewal.com/markethub/api/';
   
   // Original Base URL (for existing features)
   static const String baseUrl = 'https://api.markethubindia.com';
@@ -9,29 +9,29 @@ class ApiConstants {
 
   // ==================== ADMIN API ENDPOINTS ====================
   // Auth (Admin Dashboard)
-  static const String adminRegister = '/register.php';
-  static const String adminVerifyEmail = '/verify-email.php';
-  static const String adminSetPin = '/set-pin.php';
-  static const String adminLogin = '/login.php';
-  static const String adminCheckStatus = '/check-status.php';
-  static const String adminProfile = '/profile.php';
-  static const String adminPlans = '/plans.php';
-  static const String adminHomeUpdates = '/home-updates.php';
-  static const String adminNews = '/news.php';
-  static const String adminHindiNews = '/news-hindi.php';
-  static const String adminCirculars = '/circulars.php';
-  static const String adminLatestUpdates = '/latest-updates.php';
-  static const String adminSettings = '/settings.php';
-  static const String adminFeedback = '/feedback.php';
-  static const String adminForgotPin = '/forgot-pin.php';
-  static const String adminVerifyResetOtp = '/verify-reset-otp.php';
-  static const String adminResetPin = '/reset-pin.php';
-  static const String adminUpdateProfile = '/update-profile.php';
+  static const String adminRegister = 'register.php';
+  static const String adminVerifyEmail = 'verify-email.php';
+  static const String adminSetPin = 'set-pin.php';
+  static const String adminLogin = 'login.php';
+  static const String adminCheckStatus = 'check-status.php';
+  static const String adminProfile = 'profile.php';
+  static const String adminPlans = 'plans.php';
+  static const String adminHomeUpdates = 'get_home_updates.php';
+  static const String adminNews = 'news.php';
+  static const String adminHindiNews = 'news-hindi.php';
+  static const String adminCirculars = 'circulars.php';
+  static const String adminLatestUpdates = 'latest-updates.php';
+  static const String adminSettings = 'settings.php';
+  static const String adminFeedback = 'feedback.php';
+  static const String adminForgotPin = 'forgot-pin.php';
+  static const String adminVerifyResetOtp = 'verify-reset-otp.php';
+  static const String adminResetPin = 'reset-pin.php';
+  static const String adminUpdateProfile = 'update-profile.php';
   
   // Price Alerts
-  static const String adminGetPriceAlerts = '/get-price-alerts.php';
-  static const String adminAddPriceAlert = '/add-price-alert.php';
-  static const String adminDeletePriceAlert = '/delete-price-alert.php';
+  static const String adminGetPriceAlerts = 'get-price-alerts.php';
+  static const String adminAddPriceAlert = 'add-price-alert.php';
+  static const String adminDeletePriceAlert = 'delete-price-alert.php';
 
   // ==================== ORIGINAL API ENDPOINTS ====================
   // Auth Endpoints

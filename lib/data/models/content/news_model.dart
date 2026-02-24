@@ -40,8 +40,23 @@ class NewsModel {
       parsedTargetPlans = List<String>.from(json['plans']);
     }
 
+    // Robust DateTime parsing helper
+    DateTime parseDate(dynamic dateStr) {
+      if (dateStr == null || dateStr.toString().isEmpty) return DateTime.now();
+      try {
+        String str = dateStr.toString();
+        // If string doesn't end with Z and doesn't contain a timezone offset, assume it's UTC from PHP
+        if (!str.endsWith('Z') && !RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(str)) {
+          str += 'Z';
+        }
+        return DateTime.parse(str).toLocal();
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+
     return NewsModel(
-      id: json['_id'] ?? json['id'] ?? '',
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       summary: json['summary'],
@@ -50,12 +65,8 @@ class NewsModel {
       sourceLink: json['sourceLink'] ?? json['link'],
       newsType: json['newsType'] ?? json['type'] ?? 'english',
       targetPlanIds: parsedTargetPlans,
-      publishedAt: json['publishedAt'] != null
-          ? DateTime.parse(json['publishedAt'])
-          : DateTime.now(),
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
+      publishedAt: parseDate(json['publishedAt'] ?? json['createdAt']),
+      createdAt: parseDate(json['createdAt']),
       isUrgent: json['isUrgent'] ?? json['urgent'] ?? false,
       sourceName: json['sourceName'],
     );
@@ -123,19 +134,29 @@ class CircularModel {
   });
 
   factory CircularModel.fromJson(Map<String, dynamic> json) {
+    // Robust DateTime parsing helper
+    DateTime parseDate(dynamic dateStr) {
+      if (dateStr == null || dateStr.toString().isEmpty) return DateTime.now();
+      try {
+        String str = dateStr.toString();
+        if (!str.endsWith('Z') && !RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(str)) {
+          str += 'Z';
+        }
+        return DateTime.parse(str).toLocal();
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+
     return CircularModel(
-      id: json['_id'] ?? json['id'] ?? '',
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       imageUrl: json['imageUrl'],
       pdfUrl: json['pdfUrl'] ?? json['pdf'] ?? '',
       targetPlanIds: List<String>.from(json['targetPlanIds'] ?? json['plans'] ?? []),
-      publishedAt: json['publishedAt'] != null
-          ? DateTime.parse(json['publishedAt'])
-          : DateTime.now(),
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
+      publishedAt: parseDate(json['publishedAt'] ?? json['createdAt']),
+      createdAt: parseDate(json['createdAt']),
     );
   }
 
@@ -178,7 +199,7 @@ class EconomicEventModel {
 
   factory EconomicEventModel.fromJson(Map<String, dynamic> json) {
     return EconomicEventModel(
-      id: json['_id'] ?? json['id'] ?? json['eventName'] ?? '',
+      id: (json['_id'] ?? json['id'] ?? json['eventName'] ?? '').toString(),
       eventName: json['eventName'] ?? json['event'] ?? '',
       country: json['country'] ?? '',
       countryCode: json['countryCode'] ?? '',
