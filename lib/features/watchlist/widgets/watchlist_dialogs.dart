@@ -3,10 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/color_constants.dart';
 import '../../../core/constants/text_styles.dart';
-import '../../../core/services/google_sheets_service.dart';
 import '../../../data/models/watchlist/watchlist_item_model.dart';
-import '../../../data/models/market/spot_bulletin_model.dart';
+import '../../../data/models/market/spot_price_model.dart';
+import '../../../data/models/market/ferrous_price_model.dart';
+import '../../../data/models/market/minor_price_model.dart';
 import '../controller/watchlist_controller.dart';
+import '../../future/controller/future_controller.dart';
+import '../../future/pages/london_lme/controller/london_lme_controller.dart';
+import '../../future/pages/china_shfe/controller/china_shfe_controller.dart';
+import '../../future/pages/us_comex/controller/us_comex_controller.dart';
+import '../../spot_price/controller/spot_price_controller.dart';
+import '../../future/pages/fx/controller/fx_controller.dart';
 import '../../../core/utils/helpers.dart';
 
 /// Dialog for adding items to watchlist - Shows selectable list from data sources
@@ -18,255 +25,69 @@ class AddToWatchlistDialog extends StatefulWidget {
 }
 
 class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
-  final _searchController = TextEditingController();
-  String _selectedCategory = 'All';
-  List<_WatchlistOption> _allOptions = [];
-  List<_WatchlistOption> _filteredOptions = [];
-  bool _isLoading = true;
-
-  final _categories = ['All', 'Spot', 'London', 'China', 'COMEX', 'FX'];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAvailableItems();
-    _searchController.addListener(_filterOptions);
+  String _currentStep = 'category'; // category, subcategory, items
+  String _selectedCategory = '';
+  String _selectedSubCategory = '';
+  
+  final _categories = ['Spot', 'Future', 'FX'];
+  
+  // Future sub-categories - Removed FX as it has its own top-level category
+  final _futureSubCategories = ['London', 'China', 'COMEX'];
+  
+  // Spot sub-categories pulled from SpotPriceController
+  List<String> get _spotSubCategories {
+    if (Get.isRegistered<SpotPriceController>()) {
+      return Get.find<SpotPriceController>().spotCategories;
+    }
+    return ['Non-Ferrous', 'Minor and Ferro', 'Steel'];
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _loadAvailableItems() {
-    final options = <_WatchlistOption>[];
-    
-    // Get spot metals from Google Sheets
-    try {
-      final sheetsService = Get.find<GoogleSheetsService>();
-      final bulletin = sheetsService.spotBulletin;
-      
-      if (bulletin != null && bulletin.metalSections.isNotEmpty) {
-        for (final section in bulletin.metalSections) {
-          for (final entry in section.entries) {
-            options.add(_WatchlistOption(
-              symbol: '${entry.metalName.toUpperCase()}-${entry.subtype.toUpperCase()}'.replaceAll(' ', '-'),
-              name: '${entry.metalName} ${entry.subtype}',
-              type: 'Spot',
-              price: entry.cashPrice,
-              currency: 'INR',
-              city: entry.city,
-            ));
-          }
-        }
-      }
-      
-      // Add BME rates (Gold, Silver)
-      for (final bme in sheetsService.bmeRates) {
-        options.add(_WatchlistOption(
-          symbol: '${bme.metalName.toUpperCase()}-${bme.purity}'.replaceAll(' ', '-'),
-          name: '${bme.metalName} ${bme.purity}',
-          type: 'Spot',
-          price: bme.price,
-          currency: 'INR',
-          city: bme.city,
-        ));
-      }
-    } catch (e) {
-      debugPrint('Could not load Google Sheets data: $e');
-    }
-    
-    // Add static configurable items if no data loaded
-    if (options.isEmpty) {
-      // Add from SpotMetalConfig
-      for (final metal in SpotMetalConfig.metals) {
-        for (final subtype in metal.subtypes) {
-          options.add(_WatchlistOption(
-            symbol: '${metal.name.toUpperCase()}-${subtype.toUpperCase()}'.replaceAll(' ', '-'),
-            name: '${metal.name} $subtype',
-            type: 'Spot',
-            price: null,
-            currency: 'INR',
-          ));
-        }
-      }
-    }
-    
-    // Add LME metals
-    final lmeMetals = ['Copper', 'Aluminium', 'Zinc', 'Nickel', 'Lead', 'Tin'];
-    for (final metal in lmeMetals) {
-      options.add(_WatchlistOption(
-        symbol: metal.toUpperCase(),
-        name: 'LME $metal',
-        type: 'London',
-        price: null,
-        currency: 'USD',
-      ));
-    }
-    
-    // Add SHFE metals
-    for (final metal in lmeMetals.take(4)) {
-      options.add(_WatchlistOption(
-        symbol: '${metal.toUpperCase()}-SHFE',
-        name: 'SHFE $metal',
-        type: 'China',
-        price: null,
-        currency: 'CNY',
-      ));
-    }
-    
-    // Add COMEX metals
-    options.add(_WatchlistOption(symbol: 'GOLD-COMEX', name: 'COMEX Gold', type: 'COMEX', price: null, currency: 'USD'));
-    options.add(_WatchlistOption(symbol: 'SILVER-COMEX', name: 'COMEX Silver', type: 'COMEX', price: null, currency: 'USD'));
-    options.add(_WatchlistOption(symbol: 'COPPER-COMEX', name: 'COMEX Copper', type: 'COMEX', price: null, currency: 'USD'));
-    
-    // Add FX pairs
-    final fxPairs = ['USD/INR', 'EUR/INR', 'GBP/INR', 'JPY/INR', 'EUR/USD', 'GBP/USD'];
-    for (final pair in fxPairs) {
-      options.add(_WatchlistOption(
-        symbol: pair,
-        name: pair,
-        type: 'FX',
-        price: null,
-        currency: pair.endsWith('INR') ? 'INR' : 'USD',
-      ));
-    }
-    
-    // Remove duplicates by symbol
-    final seen = <String>{};
-    final uniqueOptions = <_WatchlistOption>[];
-    for (final option in options) {
-      if (!seen.contains(option.symbol)) {
-        seen.add(option.symbol);
-        uniqueOptions.add(option);
-      }
-    }
-    
+  void _onCategorySelected(String category) {
     setState(() {
-      _allOptions = uniqueOptions;
-      _filteredOptions = uniqueOptions;
-      _isLoading = false;
+      _selectedCategory = category;
+      if (category == 'FX') {
+        _currentStep = 'items';
+      } else {
+        _currentStep = 'subcategory';
+      }
     });
   }
 
-  void _filterOptions() {
-    final query = _searchController.text.toLowerCase();
+  void _onSubCategorySelected(String subCategory) {
     setState(() {
-      _filteredOptions = _allOptions.where((option) {
-        final matchesSearch = query.isEmpty ||
-            option.name.toLowerCase().contains(query) ||
-            option.symbol.toLowerCase().contains(query);
-        final matchesCategory = _selectedCategory == 'All' ||
-            option.type == _selectedCategory;
-        return matchesSearch && matchesCategory;
-      }).toList();
+      _selectedSubCategory = subCategory;
+      _currentStep = 'items';
     });
   }
 
-  void _addItem(_WatchlistOption option) {
-    final controller = Get.find<WatchlistController>();
-    
-    // Check if already in watchlist
-    if (controller.isInWatchlist(option.symbol)) {
-      Helpers.showError('${option.name} is already in your watchlist');
-      return;
-    }
-    
-    final item = WatchlistItemModel(
-      symbol: option.symbol,
-      name: option.name,
-      itemType: option.type,
-      currency: option.currency,
-      price: option.price,
-    );
-    
-    controller.addToWatchlist(item);
-    Get.back();
+  void _goBack() {
+    setState(() {
+      if (_currentStep == 'items') {
+        if (_selectedCategory == 'FX') {
+          _currentStep = 'category';
+        } else {
+          _currentStep = 'subcategory';
+        }
+      } else if (_currentStep == 'subcategory') {
+        _currentStep = 'category';
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
         height: MediaQuery.of(context).size.height * 0.7,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Header
-            Row(
-              children: [
-                const Icon(Icons.add_circle_outline, color: ColorConstants.primaryBlue),
-                const SizedBox(width: 12),
-                Text('Add to Watchlist', style: TextStyles.h5),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Get.back(),
-                ),
-              ],
-            ),
+            _buildHeader(),
             const SizedBox(height: 16),
-            
-            // Search bar
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search metals, currencies...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              ),
-            ),
-            const SizedBox(height: 12),
-            
-            // Category filter
-            SizedBox(
-              height: 36,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: _categories.map((cat) {
-                  final isSelected = _selectedCategory == cat;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      label: Text(cat),
-                      selected: isSelected,
-                      onSelected: (_) {
-                        setState(() => _selectedCategory = cat);
-                        _filterOptions();
-                      },
-                      selectedColor: ColorConstants.primaryBlue.withValues(alpha: 0.2),
-                      checkmarkColor: ColorConstants.primaryBlue,
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            
-            // Items list
             Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _filteredOptions.isEmpty
-                      ? Center(
-                          child: Text(
-                            'No items found',
-                            style: TextStyles.bodyMedium.copyWith(
-                              color: ColorConstants.textSecondary,
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: _filteredOptions.length,
-                          itemBuilder: (context, index) {
-                            final option = _filteredOptions[index];
-                            return _buildOptionTile(option);
-                          },
-                        ),
+              child: _buildStepContent(),
             ),
           ],
         ),
@@ -274,68 +95,440 @@ class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
     );
   }
 
-  Widget _buildOptionTile(_WatchlistOption option) {
-    final controller = Get.find<WatchlistController>();
-    final isAdded = controller.isInWatchlist(option.symbol);
-    final currencySymbol = option.currency == 'INR' ? '₹' : '\$';
-    
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: _getTypeColor(option.type).withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Center(
+  Widget _buildHeader() {
+    String title = 'Add to Watchlist';
+    if (_currentStep == 'subcategory') title = 'Select $_selectedCategory';
+    if (_currentStep == 'items') title = _selectedSubCategory.isEmpty ? _selectedCategory : _selectedSubCategory;
+
+    return Row(
+      children: [
+        if (_currentStep != 'category')
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+            onPressed: _goBack,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32),
+          ),
+        const SizedBox(width: 8),
+        Expanded(
           child: Text(
-            option.type[0],
-            style: TextStyles.bodyLarge.copyWith(
-              color: _getTypeColor(option.type),
-              fontWeight: FontWeight.bold,
+            title,
+            style: TextStyles.h5.copyWith(fontWeight: FontWeight.w800),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => Get.back(),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStepContent() {
+    switch (_currentStep) {
+      case 'category':
+        return _buildCategoryList();
+      case 'subcategory':
+        return _buildSubCategoryList();
+      case 'items':
+        return _buildItemList();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildCategoryList() {
+    return ListView.builder(
+      itemCount: _categories.length,
+      itemBuilder: (context, index) {
+        final cat = _categories[index];
+        return _buildSelectionCard(
+          title: cat,
+          icon: _getCategoryIcon(cat),
+          color: _getCategoryColor(cat),
+          onTap: () => _onCategorySelected(cat),
+        );
+      },
+    );
+  }
+
+  Widget _buildSubCategoryList() {
+    final subs = _selectedCategory == 'Future' ? _futureSubCategories : _spotSubCategories;
+    return ListView.builder(
+      itemCount: subs.length,
+      itemBuilder: (context, index) {
+        final sub = subs[index];
+        return _buildSelectionCard(
+          title: sub,
+          icon: Icons.chevron_right_rounded,
+          color: ColorConstants.primaryBlue,
+          onTap: () => _onSubCategorySelected(sub),
+        );
+      },
+    );
+  }
+
+  Widget _buildItemList() {
+    if (_selectedCategory == 'Future') {
+      return _buildFutureItems();
+    } else if (_selectedCategory == 'Spot') {
+      return _buildSpotItems();
+    } else {
+      return _buildFxItems();
+    }
+  }
+
+  Widget _buildFutureItems() {
+    return Obx(() {
+      final controller = Get.find<FutureController>();
+      List<dynamic> items = [];
+      String type = '';
+      bool loading = false;
+
+      switch (_selectedSubCategory) {
+        case 'London':
+          final lme = Get.isRegistered<LondonLMEController>() 
+              ? Get.find<LondonLMEController>() 
+              : Get.put(LondonLMEController());
+          items = lme.metals;
+          loading = lme.isLoading.value;
+          type = 'LME';
+          break;
+        case 'China':
+          final shfe = Get.isRegistered<ChinaSHFEController>() 
+              ? Get.find<ChinaSHFEController>() 
+              : Get.put(ChinaSHFEController());
+          items = shfe.metals;
+          loading = shfe.isLoading.value;
+          type = 'SHFE';
+          break;
+        case 'COMEX':
+          final comex = Get.isRegistered<USComexController>() 
+              ? Get.find<USComexController>() 
+              : Get.put(USComexController());
+          items = comex.metals;
+          loading = comex.isLoading.value;
+          type = 'COMEX';
+          break;
+      }
+
+      if (loading && items.isEmpty) {
+        return const Center(child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: CircularProgressIndicator(),
+        ));
+      }
+
+      if (items.isEmpty) return _buildEmptyState();
+
+      return ListView.builder(
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          
+          // Handle specialized models from sub-controllers if needed
+          String name = '';
+          String symbol = '';
+          double? price;
+          double? change;
+          double? changePercent;
+
+          if (item is LMEMetal) {
+            name = item.name;
+            symbol = item.symbol;
+            price = item.lastPrice;
+            change = item.change;
+            changePercent = item.changePercent;
+          } else if (item is SHFEMetal) {
+            name = item.name;
+            symbol = item.symbol;
+            price = item.lastPrice;
+            change = item.change;
+            changePercent = item.changePercent;
+          } else if (item is ComexMetal) {
+            name = item.name;
+            symbol = item.symbol;
+            price = item.lastPrice;
+            change = item.change;
+            changePercent = item.changePercent;
+          } else {
+            // Fallback for FutureDataModel
+            name = '${type == 'LME' ? 'London' : type} ${item.symbol}';
+            symbol = item.symbol;
+            price = item.price;
+            change = item.change;
+            changePercent = item.changePercent;
+          }
+
+          return _buildItemTile(
+            name: name,
+            symbol: symbol,
+            price: price,
+            change: change,
+            changePercent: changePercent,
+            type: type,
+            currency: type == 'LME' || type == 'COMEX' ? 'USD' : 'CNY',
+          );
+        },
+      );
+    });
+  }
+
+  Widget _buildSpotItems() {
+    final controller = Get.find<SpotPriceController>();
+    return Obx(() {
+      List<dynamic> items = [];
+      
+      if (_selectedSubCategory == 'Non-Ferrous') {
+        items = controller.baseMetalPrices;
+      } else if (_selectedSubCategory == 'Minor and Ferro') {
+        items = controller.minorPrices;
+      } else if (_selectedSubCategory == 'Steel') {
+        items = controller.ferrousPrices;
+      }
+
+      if (items.isEmpty) return _buildEmptyState();
+
+      return ListView.builder(
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          String name = '';
+          String symbol = '';
+          String location = '';
+          double? price;
+          double? change;
+          double? changePercent;
+
+          if (item is Map) {
+            name = item['name'] ?? '';
+            symbol = item['symbol'] ?? name;
+            price = (item['price'] as num?)?.toDouble();
+            change = (item['change'] as num?)?.toDouble();
+            changePercent = (item['changePercent'] as num?)?.toDouble();
+          } else if (item is SpotPriceModel) {
+            name = item.metalName;
+            symbol = item.id;
+            location = item.location;
+            price = item.price;
+            change = item.change;
+            changePercent = item.changePercent;
+          } else if (item is FerrousPriceModel) {
+            name = item.category;
+            symbol = '${item.category}_${item.city}';
+            location = item.city;
+            price = item.price;
+          } else if (item is MinorPriceModel) {
+            name = item.item;
+            symbol = '${item.category}_${item.item}';
+            location = item.category;
+            // Parse price string like "123.45 Rs/Kg" or "100-110"
+            final priceStr = item.price.split(' ').first;
+            price = double.tryParse(priceStr.split('-').first);
+          }
+
+          return _buildItemTile(
+            name: name,
+            symbol: symbol,
+            price: price,
+            change: change,
+            changePercent: changePercent,
+            type: 'SPOT',
+            currency: 'INR',
+            location: location,
+          );
+        },
+      );
+    });
+  }
+
+  Widget _buildFxItems() {
+    return Obx(() {
+      final controller = Get.isRegistered<FxController>() 
+          ? Get.find<FxController>() 
+          : Get.put(FxController());
+      final items = controller.currencyPairs;
+      final loading = controller.isLoading.value;
+      
+      if (loading && items.isEmpty) {
+        return const Center(child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: CircularProgressIndicator(),
+        ));
+      }
+
+      if (items.isEmpty) return _buildEmptyState();
+
+      return ListView.builder(
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return _buildItemTile(
+            name: item.pair,
+            symbol: item.id,
+            price: item.rate,
+            change: item.change,
+            changePercent: item.changePercent,
+            type: 'FX',
+            currency: 'INR',
+          );
+        },
+      );
+    });
+  }
+
+  Widget _buildItemTile({
+    required String name,
+    required String symbol,
+    required double? price,
+    double? change,
+    double? changePercent,
+    required String type,
+    required String currency,
+    String? location,
+  }) {
+    final watchlistController = Get.find<WatchlistController>();
+    final isAdded = watchlistController.isInWatchlist(symbol);
+    final isPositive = (change ?? 0) >= 0;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+      title: Text(name, style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+      subtitle: Text(
+        '$type${location != null && location.isNotEmpty ? ' • $location' : ''}',
+        style: TextStyles.caption.copyWith(color: ColorConstants.textSecondary),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                price != null ? '${currency == 'INR' ? '₹' : '\$'}${price.toStringAsFixed(2)}' : '--',
+                style: TextStyles.bodySmall.copyWith(fontWeight: FontWeight.w800, color: ColorConstants.textPrimary),
+              ),
+              if (changePercent != null)
+                Text(
+                  '${isPositive ? '+' : ''}${changePercent.toStringAsFixed(2)}%',
+                  style: TextStyles.labelSmall.copyWith(
+                    color: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          IconButton(
+            icon: Icon(
+              isAdded ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded,
+              color: isAdded ? ColorConstants.positiveGreen : ColorConstants.primaryBlue,
             ),
+            onPressed: isAdded ? null : () {
+              watchlistController.addToWatchlist(WatchlistItemModel(
+                symbol: symbol,
+                name: name,
+                itemType: type,
+                currency: currency,
+                price: price,
+                change: change,
+                changePercent: changePercent,
+                location: location,
+                lastUpdated: DateTime.now(),
+              ));
+              setState(() {}); // Rebuild to show checkmark
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectionCard({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: ColorConstants.dividerColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: ColorConstants.textHint),
+            ],
           ),
         ),
       ),
-      title: Text(option.name, style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
-      subtitle: Text(
-        '${option.type}${option.city != null ? ' • ${option.city}' : ''}',
-        style: TextStyles.caption.copyWith(color: ColorConstants.textSecondary),
+    );
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case 'Spot': return Icons.location_on_rounded;
+      case 'Future': return Icons.trending_up_rounded;
+      case 'FX': return Icons.currency_exchange_rounded;
+      default: return Icons.category_rounded;
+    }
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Spot': return ColorConstants.primaryOrange;
+      case 'Future': return ColorConstants.primaryBlue;
+      case 'FX': return Colors.teal;
+      default: return ColorConstants.textSecondary;
+    }
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.inventory_2_outlined, size: 48, color: ColorConstants.textHint.withOpacity(0.5)),
+          const SizedBox(height: 12),
+          Text(
+            'No items available in this category',
+            style: TextStyles.bodySmall.copyWith(color: ColorConstants.textHint),
+          ),
+        ],
       ),
-      trailing: isAdded
-          ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: ColorConstants.positiveGreen.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'Added',
-                style: TextStyles.caption.copyWith(color: ColorConstants.positiveGreen),
-              ),
-            )
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (option.price != null)
-                  Text(
-                    '$currencySymbol${option.price!.toStringAsFixed(0)}',
-                    style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                const SizedBox(height: 2),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: ColorConstants.primaryBlue,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text('Add', style: TextStyle(color: Colors.white, fontSize: 12)),
-                ),
-              ],
-            ),
-      onTap: isAdded ? null : () => _addItem(option),
     );
   }
 

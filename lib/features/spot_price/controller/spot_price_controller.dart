@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/websocket_service.dart';
 import '../../../core/constants/api_constants.dart';
-import '../../../core/constants/api_constants.dart';
 import '../../../core/services/google_sheets_service.dart';
 import '../../../core/services/watchlist_service.dart';
 import '../../../core/services/external_apis/metals_dev_service.dart';

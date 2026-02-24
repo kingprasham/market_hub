@@ -207,6 +207,27 @@ class WatchlistService extends GetxService {
     }
   }
 
+  /// Update multiple prices at once (for batch syncing from controllers)
+  void batchUpdatePrices(List<WatchlistItemModel> updatedItems) {
+    bool hasChanges = false;
+    for (final updated in updatedItems) {
+      final index = watchlistItems.indexWhere((item) => item.id == updated.id);
+      if (index != -1) {
+        final old = watchlistItems[index];
+        // Only update if price actually changed or it's a forced sync
+        if (old.price != updated.price || 
+            old.change != updated.change || 
+            old.changePercent != updated.changePercent) {
+          watchlistItems[index] = updated.copyWith(lastUpdated: DateTime.now());
+          hasChanges = true;
+        }
+      }
+    }
+    if (hasChanges) {
+      _saveToLocalStorage();
+    }
+  }
+
   /// Reorder watchlist items
   void reorderItems(int oldIndex, int newIndex) {
     if (oldIndex < newIndex) {

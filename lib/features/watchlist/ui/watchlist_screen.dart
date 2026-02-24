@@ -39,7 +39,7 @@ class WatchlistScreen extends GetView<WatchlistController> {
       elevation: 0,
       title: Obx(() => CommonAppBarTitle(
         title: 'Watchlist',
-        subtitle: '${controller.itemCount} items${controller.starredCount > 0 ? ' | ${controller.starredCount} starred' : ''}',
+        subtitle: '${controller.filteredItems.length} items',
       )),
       actions: [
         Obx(() => IconButton(

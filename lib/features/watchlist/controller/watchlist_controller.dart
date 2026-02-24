@@ -7,6 +7,8 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/services/watchlist_service.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../data/models/watchlist/watchlist_item_model.dart';
+import '../../future/controller/future_controller.dart';
+import '../../spot_price/controller/spot_price_controller.dart';
 
 class WatchlistController extends GetxController {
   late WatchlistService _watchlistService;
@@ -41,6 +43,112 @@ class WatchlistController extends GetxController {
     ever(_watchlistService.watchlistItems, (_) => watchlistUpdateTrigger.value++);
     ever(_watchlistService.starredItemIds, (_) => watchlistUpdateTrigger.value++);
     await fetchWatchlist();
+    _startAutoRefresh();
+  }
+
+  /// Start auto-refresh timer (15 seconds) to sync with other controllers
+  void _startAutoRefresh() {
+    Timer.periodic(const Duration(seconds: 15), (timer) {
+      if (!isLoading.value && !isRefreshing.value) {
+        _syncWithMainControllers();
+      }
+    });
+  }
+
+  /// Sync watchlist items with latest data from Future and Spot controllers
+  void _syncWithMainControllers() {
+    try {
+      final updatedItems = <WatchlistItemModel>[];
+      
+      // Sync with FutureController
+      if (Get.isRegistered<FutureController>()) {
+        final futureController = Get.find<FutureController>();
+        _syncFutures(futureController, updatedItems);
+      }
+      
+      // Sync with SpotPriceController
+      if (Get.isRegistered<SpotPriceController>()) {
+        final spotController = Get.find<SpotPriceController>();
+        _syncSpots(spotController, updatedItems);
+      }
+      
+      if (updatedItems.isNotEmpty) {
+        _watchlistService.batchUpdatePrices(updatedItems);
+      }
+    } catch (e) {
+      debugPrint('WatchlistController: Error syncing with controllers: $e');
+    }
+  }
+
+  void _syncFutures(FutureController controller, List<WatchlistItemModel> updated) {
+    // Controller is actually FutureController - using dynamic to avoid strict import if needed but I'll use imports
+    for (final item in watchlistItems) {
+      if (!item.isFuture) continue;
+      
+      // Look for symbol in LME, SHFE, COMEX, FX
+      dynamic found;
+      
+      // Search LME
+      found = controller.lmeData.firstWhereOrNull((d) => d.symbol == item.symbol);
+      if (found != null) {
+        updated.add(item.copyWith(
+          price: found.price,
+          change: found.change,
+          changePercent: found.changePercent,
+        ));
+        continue;
+      }
+      
+      // Search SHFE
+      found = controller.shfeData.firstWhereOrNull((d) => d.symbol == item.symbol);
+      if (found != null) {
+        updated.add(item.copyWith(
+          price: found.price,
+          change: found.change,
+          changePercent: found.changePercent,
+        ));
+        continue;
+      }
+      
+      // Search COMEX
+      found = controller.comexData.firstWhereOrNull((d) => d.symbol == item.symbol);
+      if (found != null) {
+        updated.add(item.copyWith(
+          price: found.price,
+          change: found.change,
+          changePercent: found.changePercent,
+        ));
+        continue;
+      }
+      
+      // Search FX
+      found = controller.fxData.firstWhereOrNull((d) => d.pair == item.symbol);
+      if (found != null) {
+        updated.add(item.copyWith(
+          price: found.rate,
+          change: found.change,
+          changePercent: found.changePercent,
+        ));
+      }
+    }
+  }
+
+  void _syncSpots(SpotPriceController controller, List<WatchlistItemModel> updated) {
+    for (final item in watchlistItems) {
+      if (!item.isSpot) continue;
+      
+      // Search in baseMetalPrices and bmePrices
+      final found = [...controller.baseMetalPrices, ...controller.bmePrices]
+          .firstWhereOrNull((p) => p.symbol == item.symbol || p.id == item.id);
+          
+      if (found != null) {
+        updated.add(item.copyWith(
+          price: found.price,
+          change: found.change,
+          changePercent: found.changePercent,
+        ));
+      }
+    }
   }
 
   /// Get watchlist items from service
@@ -49,9 +157,10 @@ class WatchlistController extends GetxController {
   /// Get starred item IDs from service
   Set<String> get starredItemIds => _watchlistService.starredItemIds;
 
-  /// Get filtered watchlist items
+  /// Get filtered watchlist items (Strictly starred items only)
   List<WatchlistItemModel> get filteredItems {
-    var items = watchlistItems.toList();
+    // Only show starred items as requested
+    var items = watchlistItems.where((item) => isStarred(item.id) || isStarred(item.symbol)).toList();
 
     // Apply filter
     if (selectedFilter.value != 'All') {
@@ -199,10 +308,23 @@ class WatchlistController extends GetxController {
       } catch (e) {
         // API failed but item is saved locally
       }
+      
+      // Auto-star when adding as requested by user
+      if (!isStarred(item.id)) {
+        await toggleStar(item.id);
+      }
+      
       _subscribeToWatchlistChannels();
       Helpers.showSuccess('Added to watchlist');
       return true;
     } else {
+      // If already in list but not starred, star it
+      if (!isStarred(item.id)) {
+        await toggleStar(item.id);
+        Helpers.showSuccess('Added to watchlist');
+        return true;
+      }
+      
       Helpers.showError('Already in watchlist');
       return false;
     }
