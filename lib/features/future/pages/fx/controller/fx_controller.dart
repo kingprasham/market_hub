@@ -16,7 +16,7 @@ class FxController extends GetxController {
   final hasError = false.obs;
   final isRefreshing = false.obs;
   final selectedFilter = 'All'.obs;
-  final filterOptions = ['All'];
+  final filterOptions = <String>[];
 
   /// Fixed ordered list: (display pair, id key, match keywords)
   static const _fixedList = [

@@ -33,9 +33,6 @@ class SettlementPage extends StatelessWidget {
           color: ColorConstants.primaryBlue,
           child: CustomScrollView(
             slivers: [
-              SliverToBoxAdapter(
-                child: _buildHeader(),
-              ),
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 sliver: SliverList(

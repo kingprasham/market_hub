@@ -15,7 +15,7 @@ class ChinaSHFEController extends GetxController {
   final hasError = false.obs;
   final isRefreshing = false.obs;
   final selectedFilter = 'All'.obs;
-  final filterOptions = ['All'];
+  final filterOptions = <String>[];
 
   /// Fixed ordered list — symbol used for matching
   static const _fixedList = [

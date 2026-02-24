@@ -911,7 +911,7 @@ class GoogleSheetsService extends GetxService {
   /// Fetch and parse Ferrous data from new sheet
   Future<void> fetchFerrousData() async {
     try {
-      final csvUrl = 'https://docs.google.com/spreadsheets/d/$ferrousSheetId/export?format=csv&gid=0'; // Assuming gid=0 for first sheet
+      final csvUrl = 'https://docs.google.com/spreadsheets/d/$ferrousSheetId/export?format=csv&gid=1842451283';
       debugPrint('Fetching Ferrous data from: $csvUrl');
 
       final response = await _dio.get(
@@ -1998,6 +1998,7 @@ class PestColumnConfig {
     required this.displayName,
   });
 }
+
 
 /// Represents a city-wise rate entry
 class CityRate {

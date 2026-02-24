@@ -26,9 +26,6 @@ class USComexPage extends StatelessWidget {
           child: CustomScrollView(
             slivers: [
               // Market Status Header
-              SliverToBoxAdapter(
-                child: _buildMarketStatusHeader(),
-              ),
 
               // Filter Options
               SliverToBoxAdapter(
@@ -133,6 +130,7 @@ class USComexPage extends StatelessWidget {
   }
 
   Widget _buildFilterOptions() {
+    if (controller.filterOptions.isEmpty) return const SizedBox.shrink();
     return Container(
       height: 50,
       margin: const EdgeInsets.symmetric(horizontal: 16),

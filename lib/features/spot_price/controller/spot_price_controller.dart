@@ -28,8 +28,8 @@ class SpotPriceController extends GetxController {
   final selectedCity = 'All'.obs; 
 
   // New Categories
-  final spotCategories = ['Ferrous', 'Non-Ferrous', 'Minor and Ferro'];
-  final selectedCategory = 'Ferrous'.obs;
+  final spotCategories = ['Non-Ferrous', 'Minor and Ferro', 'Steel'];
+  final selectedCategory = 'Non-Ferrous'.obs;
 
   // Ferrous Data
   final ferrousSubCategories = <String>[].obs;

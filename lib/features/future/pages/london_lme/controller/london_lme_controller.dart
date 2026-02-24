@@ -15,7 +15,7 @@ class LondonLMEController extends GetxController {
   final hasError = false.obs;
   final isRefreshing = false.obs;
   final selectedFilter = 'All'.obs;
-  final filterOptions = ['All'];
+  final filterOptions = <String>[];
 
   /// Fixed ordered list — always displayed; prices filled from scraper
   static const _fixedList = [
@@ -25,7 +25,7 @@ class LondonLMEController extends GetxController {
     ('Nickel',    'NI'),
     ('Lead',      'PB'),
     ('Tin',       'SN'),
-    ('AA',        'AA'),
+    ('Aluminium Alloy', 'AA'),
   ];
 
   WatchlistService? _watchlistService;

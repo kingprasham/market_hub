@@ -8,7 +8,8 @@ class LiveNewsWebViewPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return EnhancedWebView(
       url: 'https://widgets.tradingeconomics.com/news?utm_source=te-section',
-      title: 'Global Market News',
+      title: '', // No title needed as per user request
+      javascriptInjection: "document.querySelectorAll('header, footer, .te-logo-container, .te-brand, [href*=\"tradingeconomics.com\"]').forEach(e => e.style.display = 'none');",
       timeoutSeconds: 30,
       enablePullToRefresh: true,
       onLoadComplete: () {

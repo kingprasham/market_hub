@@ -59,6 +59,7 @@ class FxPage extends StatelessWidget {
 
 
   Widget _buildFilterOptions() {
+    if (controller.filterOptions.isEmpty) return const SizedBox.shrink();
     return Container(
       height: 50,
       margin: const EdgeInsets.symmetric(horizontal: 16),

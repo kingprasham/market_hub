@@ -106,13 +106,6 @@ class HomeScreen extends GetView<HomeController> {
                 child: _buildAdCarousel(),
               ),
 
-              // Starred Watchlist Section (below ads)
-              SliverToBoxAdapter(
-                child: Obx(() {
-                  if (controller.starredItems.isEmpty) return const SizedBox.shrink();
-                  return _buildStarredWatchlistSection();
-                }),
-              ),
 
               // ─── Live Prices Section ──────────────────────────────────────────
               SliverToBoxAdapter(
@@ -390,6 +383,21 @@ class HomeScreen extends GetView<HomeController> {
                     ],
                   ),
                 ),
+                InkWell(
+                  onTap: () => Get.toNamed(AppRoutes.allUpdates),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Text(
+                      'View All',
+                      style: TextStyles.bodySmall.copyWith(
+                        color: ColorConstants.primaryBlue,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 _buildPulseDot(),
               ],
             ),
@@ -438,7 +446,7 @@ class HomeScreen extends GetView<HomeController> {
 
             return Column(
               children: [
-                ...changes.take(10).map((c) => _buildChangeRow(c)),
+                ...changes.take(4).map((c) => _buildChangeRow(c)),
               ],
             );
           }),

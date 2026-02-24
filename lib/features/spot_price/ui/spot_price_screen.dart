@@ -41,7 +41,7 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
           Obx(() => Column(
             children: [
               _buildCategoryFilter(),
-              if (controller.selectedCategory.value == 'Ferrous')
+              if (controller.selectedCategory.value == 'Steel')
                 _buildFerrousSubCategoryFilter(),
               if (controller.selectedCategory.value == 'Minor and Ferro')
                 _buildMinorSubCategoryFilter(),
@@ -290,7 +290,7 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
     return Obx(() {
         final category = controller.selectedCategory.value;
         
-        if (category == 'Ferrous') {
+        if (category == 'Steel') {
             return _buildFerrousList();
         } else if (category == 'Non-Ferrous') {
              // Show existing logic for Non-Ferrous
@@ -313,7 +313,7 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
                       children: [
                           const CircularProgressIndicator(),
                           const SizedBox(height: 16),
-                          Text('Loading Ferrous Prices...', style: TextStyles.caption),
+                          Text('Loading Steel Prices...', style: TextStyles.caption),
                       ],
                   ),
               );
@@ -415,26 +415,6 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 12),
-        // Section header (e.g. "Copper", "Brass", "Aluminium")
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [ColorConstants.primaryBlue, ColorConstants.primaryBlue.withOpacity(0.8)],
-            ),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            section.sectionName,
-            style: TextStyles.bodyMedium.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
         ..._buildItemRows(section.items),
       ],
     );
@@ -549,13 +529,7 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Text(
-                      item.price1Label,
-                      style: TextStyles.caption.copyWith(
-                        color: ColorConstants.textSecondary,
-                        fontSize: 10,
-                      ),
-                    ),
+                    const SizedBox.shrink(),
                   ],
                 ),
               ),
@@ -572,13 +546,7 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Text(
-                      item.price2Label ?? 'Sell',
-                      style: TextStyles.caption.copyWith(
-                        color: ColorConstants.textSecondary,
-                        fontSize: 10,
-                      ),
-                    ),
+                    const SizedBox.shrink(),
                   ],
                 ),
               ),
@@ -606,25 +574,6 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [ColorConstants.primaryBlue, ColorConstants.primaryBlue.withOpacity(0.8)],
-            ),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            section.sectionName,
-            style: TextStyles.bodyMedium.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
         ..._buildItemRows(section.items),
       ],
     );

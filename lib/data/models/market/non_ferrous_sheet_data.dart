@@ -55,6 +55,7 @@ class NonFerrousSheetData {
       _CityConfig('MORADABAD', nameCol: 30, price1Col: 31),
       _CityConfig('HATHRAS', nameCol: 32, price1Col: 33),
       _CityConfig('JALANDHAR', nameCol: 34, price1Col: 35),
+      _CityConfig('BME', nameCol: 37, price1Col: 38),
     ];
 
     // Known metal section headers that appear within city columns
@@ -95,8 +96,11 @@ class NonFerrousSheetData {
         if (rawName.isEmpty) continue;
 
         final name = rawName;
-        final p1 = _parsePrice(_safeGet(row, cfg.price1Col));
-        final p2 = cfg.price2Col != null ? _parsePrice(_safeGet(row, cfg.price2Col!)) : null;
+        final rawP1 = _safeGet(row, cfg.price1Col);
+        final rawP2 = cfg.price2Col != null ? _safeGet(row, cfg.price2Col!) : '';
+        
+        final p1 = _parsePrice(rawP1);
+        final p2 = rawP2.isNotEmpty ? _parsePrice(rawP2) : null;
 
         // Determine if this is a header or a data row
         final cleanedName = _clean(name).toUpperCase();
@@ -106,6 +110,8 @@ class NonFerrousSheetData {
           name: name,
           price1: p1,
           price2: p2,
+          rawPrice1: rawP1,
+          rawPrice2: rawP2,
           isHeader: isHeader,
           price1Label: cfg.price2Col != null ? 'Buy' : 'Price',
           price2Label: cfg.price2Col != null ? 'Sell' : null,
@@ -140,6 +146,8 @@ class NonFerrousSheetData {
             name: _clean(entry.name),
             price1: entry.price1,
             price2: entry.price2,
+            rawPrice1: entry.rawPrice1,
+            rawPrice2: entry.rawPrice2,
             price1Label: entry.price1Label,
             price2Label: entry.price2Label,
           ));
@@ -192,13 +200,17 @@ class NonFerrousSheetData {
         currentItems = [];
       } else if (currentSectionName != null) {
         final name = firstCell;
-        final p1 = _parsePrice(_safeGet(row, 1));
-        final p2 = _parsePrice(_safeGet(row, 2));
+        final rawP1 = _safeGet(row, 1);
+        final rawP2 = _safeGet(row, 2);
+        final p1 = _parsePrice(rawP1);
+        final p2 = _parsePrice(rawP2);
         if (name.isNotEmpty && (p1 != null || p2 != null)) {
           currentItems.add(MetalItem(
             name: name,
             price1: p1,
             price2: p2,
+            rawPrice1: rawP1,
+            rawPrice2: rawP2,
             price1Label: 'Buy',
             price2Label: 'Sell',
           ));
@@ -282,6 +294,8 @@ class MetalItem {
   final String name;
   final double? price1;
   final double? price2;
+  final String rawPrice1;
+  final String rawPrice2;
   final String price1Label;
   final String? price2Label;
   final bool isSubHeader;
@@ -291,14 +305,16 @@ class MetalItem {
     required this.name,
     this.price1,
     this.price2,
+    this.rawPrice1 = '',
+    this.rawPrice2 = '',
     this.price1Label = 'Price',
     this.price2Label,
     this.isSubHeader = false,
     this.lastUpdated,
   });
 
-  String get displayPrice1 => price1 != null ? '₹${price1!.toStringAsFixed(0)}' : '--';
-  String get displayPrice2 => price2 != null ? '₹${price2!.toStringAsFixed(0)}' : '--';
+  String get displayPrice1 => rawPrice1.isNotEmpty ? '₹$rawPrice1' : (price1 != null ? '₹${price1!.toStringAsFixed(0)}' : '--');
+  String get displayPrice2 => rawPrice2.isNotEmpty ? '₹$rawPrice2' : (price2 != null ? '₹${price2!.toStringAsFixed(0)}' : '--');
 }
 
 /// A Delhi-only metal section (from bottom rows)
@@ -314,6 +330,8 @@ class _RawEntry {
   final String name;
   final double? price1;
   final double? price2;
+  final String rawPrice1;
+  final String rawPrice2;
   final bool isHeader;
   final String price1Label;
   final String? price2Label;
@@ -322,6 +340,8 @@ class _RawEntry {
     required this.name,
     this.price1,
     this.price2,
+    this.rawPrice1 = '',
+    this.rawPrice2 = '',
     this.isHeader = false,
     this.price1Label = 'Price',
     this.price2Label,

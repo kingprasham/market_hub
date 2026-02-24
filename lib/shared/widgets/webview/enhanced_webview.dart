@@ -8,6 +8,7 @@ class EnhancedWebView extends StatefulWidget {
   final String title;
   final int timeoutSeconds;
   final bool enablePullToRefresh;
+  final String? javascriptInjection;
   final VoidCallback? onLoadComplete;
   final Function(String)? onError;
 
@@ -15,6 +16,7 @@ class EnhancedWebView extends StatefulWidget {
     super.key,
     required this.url,
     required this.title,
+    this.javascriptInjection,
     this.timeoutSeconds = 30,
     this.enablePullToRefresh = true,
     this.onLoadComplete,
@@ -78,6 +80,9 @@ class _EnhancedWebViewState extends State<EnhancedWebView> {
         _isLoading = false;
         _loadProgress = 100;
       });
+    }
+    if (widget.javascriptInjection != null) {
+      _controller.runJavaScript(widget.javascriptInjection!);
     }
     widget.onLoadComplete?.call();
   }

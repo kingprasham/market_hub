@@ -226,13 +226,6 @@ class ProfileScreen extends GetView<ProfileController> {
           ),
           _buildDivider(),
           _buildMenuItem(
-            icon: Icons.notifications_active_outlined,
-            title: 'Price Alerts',
-            subtitle: 'Manage your price alerts',
-            onTap: () => Get.toNamed(AppRoutes.priceAlerts),
-          ),
-          _buildDivider(),
-          _buildMenuItem(
             icon: Icons.bookmark_outline,
             title: 'Saved Items',
             subtitle: 'Your bookmarked content',
