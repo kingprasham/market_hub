@@ -83,5 +83,6 @@ abstract class AppRoutes {
   static const savedItems = '/saved-items';
   static const adDetail = '/ad-detail';
   static const allUpdates = '/updates';
+  static const nonFerrousUpdates = '/non-ferrous-updates';
   static const onboarding = '/onboarding';
 }

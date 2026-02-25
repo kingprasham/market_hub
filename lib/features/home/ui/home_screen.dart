@@ -389,7 +389,7 @@ class HomeScreen extends GetView<HomeController> {
                   ),
                 ),
                 InkWell(
-                  onTap: () => Get.toNamed(AppRoutes.allUpdates),
+                  onTap: () => Get.toNamed(AppRoutes.nonFerrousUpdates),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     child: Text(
@@ -458,7 +458,7 @@ class HomeScreen extends GetView<HomeController> {
 
           // ─── View All CTA ─────────────────────────────────────────────
           InkWell(
-            onTap: () => Get.toNamed(AppRoutes.allUpdates),
+            onTap: () => Get.toNamed(AppRoutes.nonFerrousUpdates),
             borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
             child: Container(
               width: double.infinity,

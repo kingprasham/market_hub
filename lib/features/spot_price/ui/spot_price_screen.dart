@@ -338,6 +338,7 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
               itemCount: controller.ferrousPrices.length,
               itemBuilder: (context, index) {
                   final item = controller.ferrousPrices[index];
+                  final key = 'Ferrous|${item.category}|${item.city}';
                   return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -346,21 +347,31 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: Colors.grey[200]!),
                       ),
-                      child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                              Text(
-                                  item.city,
-                                  style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              Text(
-                                  Formatters.formatCurrency(item.price),
-                                  style: TextStyles.bodyLarge.copyWith(
-                                      color: ColorConstants.primaryBlue,
-                                      fontWeight: FontWeight.bold
-                                  ),
-                              ),
-                          ],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                                Text(
+                                    item.city,
+                                    style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                                ),
+                                Text(
+                                    Formatters.formatCurrency(item.price),
+                                    style: TextStyles.bodyLarge.copyWith(
+                                        color: ColorConstants.primaryBlue,
+                                        fontWeight: FontWeight.bold
+                                    ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _getUpdatedAgo(key),
+                            style: TextStyles.caption.copyWith(color: ColorConstants.textHint, fontSize: 10),
+                          ),
+                        ],
                       ),
                   );
               },
@@ -428,8 +439,35 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 12),
-        ..._buildItemRows(section.items),
+        if (section.sectionName.toUpperCase() != 'GENERAL') ...[
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFD740), // Vibrant Yellow/Amber
+              borderRadius: BorderRadius.circular(4),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(12),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              section.sectionName.toUpperCase(),
+              style: TextStyles.bodyMedium.copyWith(
+                fontWeight: FontWeight.bold,
+                color: ColorConstants.textPrimary,
+                letterSpacing: 1.2,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        ..._buildItemRows(section.items, section.sectionName),
       ],
     );
   }
@@ -489,7 +527,7 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
     );
   }
 
-  List<Widget> _buildItemRows(List<MetalItem> items) {
+  List<Widget> _buildItemRows(List<MetalItem> items, String sectionName) {
     return items.map((item) {
       // Sub-header row (e.g. "COPPER SCRAP (ARM)") — no prices, just a label
       if (item.isSubHeader) {
@@ -512,6 +550,8 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
       }
 
       final hasTwoPrices = item.price2 != null;
+      final key = 'NonFerrous|$sectionName|${item.name}|${controller.selectedNonFerrousCity.value}';
+      
       return Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -520,62 +560,70 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey[200]!),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 3,
-              child: Text(
-                item.name.replaceAll('*', '').replaceAll(':', '').trim(),
-                style: TextStyles.bodyMedium
-                    .copyWith(fontWeight: FontWeight.w600),
-              ),
-            ),
-            if (hasTwoPrices) ...[
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    item.name.replaceAll('*', '').replaceAll(':', '').trim(),
+                    style: TextStyles.bodyMedium
+                        .copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                if (hasTwoPrices) ...[
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          item.displayPrice1,
+                          style: TextStyles.bodyLarge.copyWith(
+                            color: ColorConstants.primaryBlue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          item.displayPrice2,
+                          style: TextStyles.bodyLarge.copyWith(
+                            color: const Color(0xFF1E8449),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else
+                  Expanded(
+                    flex: 2,
+                    child: Text(
                       item.displayPrice1,
+                      textAlign: TextAlign.end,
                       style: TextStyles.bodyLarge.copyWith(
                         color: ColorConstants.primaryBlue,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox.shrink(),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      item.displayPrice2,
-                      style: TextStyles.bodyLarge.copyWith(
-                        color: const Color(0xFF1E8449),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox.shrink(),
-                  ],
-                ),
-              ),
-            ] else
-              Expanded(
-                flex: 2,
-                child: Text(
-                  item.displayPrice1,
-                  textAlign: TextAlign.end,
-                  style: TextStyles.bodyLarge.copyWith(
-                    color: ColorConstants.primaryBlue,
-                    fontWeight: FontWeight.bold,
                   ),
-                ),
-              ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _getUpdatedAgo(key),
+              style: TextStyles.caption.copyWith(color: ColorConstants.textHint, fontSize: 10),
+            ),
           ],
         ),
       );
@@ -588,7 +636,25 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        ..._buildItemRows(section.items),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFD740),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            section.sectionName.toUpperCase(),
+            style: TextStyles.bodyMedium.copyWith(
+              fontWeight: FontWeight.bold,
+              color: ColorConstants.textPrimary,
+              letterSpacing: 1.2,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ..._buildItemRows(section.items, section.sectionName),
       ],
     );
   }
@@ -727,6 +793,7 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
               itemCount: controller.minorPrices.length,
               itemBuilder: (context, index) {
                   final item = controller.minorPrices[index];
+                  final key = 'Minor|${item.category}|${item.item}|${item.quality}';
                   // Item, Quality, Price, Unit, Date
                   return Container(
                       margin: const EdgeInsets.only(bottom: 8),
@@ -785,7 +852,12 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
                                  style: TextStyles.caption.copyWith(color: ColorConstants.textSecondary),
                                ),
                              ],
-                          )
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _getUpdatedAgo(key),
+                            style: TextStyles.caption.copyWith(color: ColorConstants.textHint, fontSize: 10),
+                          ),
                         ],
                       ),
                   );
@@ -1272,5 +1344,10 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
       borderRadius: 8,
       duration: const Duration(seconds: 2),
     );
+  }
+  String _getUpdatedAgo(String key) {
+    final updated = controller.itemLastUpdated[key];
+    if (updated == null) return 'Updated: Just now';
+    return 'Updated: ${Formatters.formatRelativeTime(updated)}';
   }
 }

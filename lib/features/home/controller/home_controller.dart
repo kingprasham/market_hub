@@ -49,6 +49,9 @@ class HomeController extends GetxController {
   /// Detected price changes (only Non-Ferrous metals that actually changed).
   final priceChanges = <PriceChange>[].obs;
 
+  /// Current "live" Non-Ferrous prices (flat list for the new details page).
+  final nfCurrentPrices = <PriceChange>[].obs;
+
   /// Baseline snapshot: key → formatted price string.
   final Map<String, String> _priceSnapshot = {};
 
@@ -147,6 +150,20 @@ class HomeController extends GetxController {
       }
     }
 
+    final now = DateTime.now();
+
+    // ── Update current live list ──
+    final currentList = current.entries.map((e) => PriceChange(
+      key: e.key,
+      name: e.value.name,
+      city: e.value.city,
+      category: e.value.category,
+      oldPrice: '', // Not used for current view
+      newPrice: e.value.price,
+      detectedAt: now,
+    )).toList();
+    nfCurrentPrices.assignAll(currentList);
+
     // ── First load → capture baseline ──
     if (!_baselineCaptured) {
       _baselineCaptured = true;
@@ -159,7 +176,6 @@ class HomeController extends GetxController {
     }
 
     // ── Compare to snapshot and detect changes ──
-    final now = DateTime.now();
     final newChanges = <PriceChange>[];
 
     for (final e in current.entries) {

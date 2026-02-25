@@ -68,6 +68,10 @@ class SpotPriceController extends GetxController {
   // Watchlist trigger
   final watchlistUpdateTrigger = 0.obs;
 
+  // Track last changed timestamp for each item
+  final itemLastUpdated = <String, DateTime>{}.obs;
+  final _priceSnapshot = <String, String>{};
+
   final tabs = ['Base Metal', 'BME'];
 
   // Auto-refresh intervals (in seconds)
@@ -119,6 +123,17 @@ class SpotPriceController extends GetxController {
     if (_sheetsService != null && category.isNotEmpty) {
       final prices = _sheetsService!.ferrousPrices[category] ?? [];
       ferrousPrices.assignAll(prices);
+      
+      // Track changes
+      final now = DateTime.now();
+      for (final p in prices) {
+        final key = 'Ferrous|${p.category}|${p.city}';
+        final priceStr = p.price.toString();
+        if (_priceSnapshot[key] != priceStr) {
+          _priceSnapshot[key] = priceStr;
+          itemLastUpdated[key] = now;
+        }
+      }
     }
   }
 
@@ -126,6 +141,17 @@ class SpotPriceController extends GetxController {
     if (_sheetsService != null && category.isNotEmpty) {
       final prices = _sheetsService!.minorPrices[category] ?? [];
       minorPrices.assignAll(prices);
+      
+      // Track changes
+      final now = DateTime.now();
+      for (final p in prices) {
+        final key = 'Minor|${p.category}|${p.item}|${p.quality}';
+        final priceStr = p.price;
+        if (_priceSnapshot[key] != priceStr) {
+          _priceSnapshot[key] = priceStr;
+          itemLastUpdated[key] = now;
+        }
+      }
     }
   }
 
@@ -246,6 +272,38 @@ class SpotPriceController extends GetxController {
       }
     } catch (e) {
       debugPrint('Error loading Non-Ferrous data: $e');
+    }
+
+    // Update Non-Ferrous timestamps
+    final nfData = nonFerrousData.value;
+    if (nfData != null) {
+      final now = DateTime.now();
+      for (final city in nfData.cities) {
+        for (final section in city.sections) {
+          for (final item in section.items) {
+            if (item.isSubHeader) continue;
+            final key = 'NonFerrous|${section.sectionName}|${item.name}|${city.cityName}';
+            final priceStr = item.displayPrice1 + (item.price2 != null ? item.displayPrice2 : '');
+            if (_priceSnapshot[key] != priceStr) {
+              _priceSnapshot[key] = priceStr;
+              itemLastUpdated[key] = now;
+            }
+          }
+        }
+      }
+      
+      // Also check delhi-only sections
+      for (final section in nfData.delhiSections) {
+        for (final item in section.items) {
+          if (item.isSubHeader) continue;
+          final key = 'NonFerrous|${section.sectionName}|${item.name}|DELHI';
+          final priceStr = item.displayPrice1 + (item.price2 != null ? item.displayPrice2 : '');
+          if (_priceSnapshot[key] != priceStr) {
+            _priceSnapshot[key] = priceStr;
+            itemLastUpdated[key] = now;
+          }
+        }
+      }
     }
   }
   
