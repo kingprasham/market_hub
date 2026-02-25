@@ -19,20 +19,24 @@ class AppLogo extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: ColorConstants.primaryGradient,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: ColorConstants.primaryColor.withValues(alpha: 0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Icon(
-        Icons.show_chart,
-        size: iconSize,
-        color: Colors.white,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Image.asset(
+          'assets/images/logo.png',
+          width: iconSize,
+          height: iconSize,
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }

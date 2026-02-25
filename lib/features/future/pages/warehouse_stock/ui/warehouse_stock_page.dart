@@ -5,6 +5,8 @@ import '../../../../../core/constants/text_styles.dart';
 import '../../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../controller/warehouse_stock_controller.dart';
 import '../../../../../core/services/google_sheets_service.dart';
+import '../../../../../shared/widgets/common/metal_detail_dialog.dart';
+import 'package:intl/intl.dart';
 
 class WarehouseStockPage extends StatelessWidget {
   const WarehouseStockPage({super.key});
@@ -40,7 +42,7 @@ class WarehouseStockPage extends StatelessWidget {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final item = controller.lmeData[index];
-                      return _buildWarehouseCard(item);
+                      return _buildWarehouseCard(context, item);
                     },
                     childCount: controller.lmeData.length,
                   ),
@@ -113,106 +115,120 @@ class WarehouseStockPage extends StatelessWidget {
     );
   }
 
-  Widget _buildWarehouseCard(dynamic item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: ColorConstants.borderColor.withOpacity(0.5)),
-      ),
-      child: Column(
-        children: [
-          // Card Header
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: ColorConstants.primaryBlue.withOpacity(0.05),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
+  Widget _buildWarehouseCard(BuildContext context, dynamic item) {
+    return InkWell(
+      onTap: () {
+        MetalDetailDialog.show(
+          context,
+          title: '${item.symbol} Warehouse Stock',
+          lastPrice: 'Total: ${item.last.toStringAsFixed(0)}',
+          high: 'In: ${item.inStock.toStringAsFixed(0)}',
+          low: 'Out: ${item.outStock.toStringAsFixed(0)}',
+          change: 'Daily: ${item.change > 0 ? '+' : ''}${item.change.toStringAsFixed(0)} (${item.chnPercent})',
+          isPositive: item.change >= 0,
+          lastTrade: DateFormat('dd MMM hh:mma').format(DateTime.now()).toLowerCase(),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: ColorConstants.primaryBlue,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    item.symbol,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+          ],
+          border: Border.all(color: ColorConstants.borderColor.withOpacity(0.5)),
+        ),
+        child: Column(
+          children: [
+            // Card Header
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: ColorConstants.primaryBlue.withOpacity(0.05),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: ColorConstants.primaryBlue,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      item.symbol,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Last Price',
+                          style: TextStyle(fontSize: 10, color: Colors.grey),
+                        ),
+                        Text(
+                          item.last.toStringAsFixed(0),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       const Text(
-                        'Last Price',
+                        'Daily Change',
                         style: TextStyle(fontSize: 10, color: Colors.grey),
                       ),
-                      Text(
-                        item.last.toStringAsFixed(0),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
+                      _buildChangeText(item.change, bold: true),
                     ],
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text(
-                      'Daily Change',
-                      style: TextStyle(fontSize: 10, color: Colors.grey),
-                    ),
-                    _buildChangeText(item.change, bold: true),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                _buildValueSection('TOTAL STOCK', [
-                  _buildDetailItem('IN', item.inStock.toStringAsFixed(0)),
-                  _buildDetailItem('OUT', item.outStock.toStringAsFixed(0)),
-                  _buildDetailItem('CHANGE', '', child: _buildChangeText(item.change)),
-                  _buildDetailItem('CHANGE %', item.chnPercent),
-                ]),
-                const Divider(height: 24),
-                _buildValueSection('CANCELLED WARRANTS (C.WR)', [
-                  _buildDetailItem('VALUE', item.cwr.toStringAsFixed(0)),
-                  _buildDetailItem('CHANGE', '', child: _buildChangeText(item.cwrChange)),
-                  _buildDetailItem('CHANGE %', item.cwrChnPercent),
-                ]),
-                const Divider(height: 24),
-                _buildValueSection('LIVE WARRANTS (LIVE-WR)', [
-                  _buildDetailItem('VALUE', item.liveWr.toStringAsFixed(0)),
-                  _buildDetailItem('CHANGE', '', child: _buildChangeText(item.liveWrChange)),
-                  _buildDetailItem('CHANGE %', item.liveWrChnPercent),
-                ]),
-              ],
+            
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  _buildValueSection('TOTAL STOCK', [
+                    _buildDetailItem('IN', item.inStock.toStringAsFixed(0)),
+                    _buildDetailItem('OUT', item.outStock.toStringAsFixed(0)),
+                    _buildDetailItem('CHANGE', '', child: _buildChangeText(item.change)),
+                    _buildDetailItem('CHANGE %', item.chnPercent),
+                  ]),
+                  const Divider(height: 24),
+                  _buildValueSection('CANCELLED WARRANTS (C.WR)', [
+                    _buildDetailItem('VALUE', item.cwr.toStringAsFixed(0)),
+                    _buildDetailItem('CHANGE', '', child: _buildChangeText(item.cwrChange)),
+                    _buildDetailItem('CHANGE %', item.cwrChnPercent),
+                  ]),
+                  const Divider(height: 24),
+                  _buildValueSection('LIVE WARRANTS (LIVE-WR)', [
+                    _buildDetailItem('VALUE', item.liveWr.toStringAsFixed(0)),
+                    _buildDetailItem('CHANGE', '', child: _buildChangeText(item.liveWrChange)),
+                    _buildDetailItem('CHANGE %', item.liveWrChnPercent),
+                  ]),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

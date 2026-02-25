@@ -4,6 +4,8 @@ import '../../../../../core/constants/color_constants.dart';
 import '../../../../../core/constants/text_styles.dart';
 import '../../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../controller/fx_controller.dart';
+import '../../../../../shared/widgets/common/metal_detail_dialog.dart';
+import 'package:intl/intl.dart';
 
 class FxPage extends StatelessWidget {
   const FxPage({super.key});
@@ -102,17 +104,31 @@ class FxPage extends StatelessWidget {
     return Obx(() {
       controller.watchlistUpdateTrigger.value;
 
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            bottom: BorderSide(
-              color: ColorConstants.borderColor.withOpacity(0.5),
-              width: 1,
+      return InkWell(
+          onTap: () {
+            if (!hasData) return;
+            MetalDetailDialog.show(
+              Get.context!,
+              title: pair.pair,
+              lastPrice: pair.rate!.toStringAsFixed(4),
+              high: pair.high != null ? pair.high!.toStringAsFixed(4) : null,
+              low: pair.low != null ? pair.low!.toStringAsFixed(4) : null,
+              change: '${pair.change! > 0 ? '+' : ''}${pair.change!.toStringAsFixed(4)} (${pair.changePercent!.toStringAsFixed(2)}%)',
+              isPositive: isPositive,
+              lastTrade: DateFormat('dd MMM hh:mma').format(pair.lastUpdated ?? DateTime.now()).toLowerCase(),
+            );
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                bottom: BorderSide(
+                  color: ColorConstants.borderColor.withOpacity(0.5),
+                  width: 1,
+                ),
+              ),
             ),
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
           children: [
             Row(
@@ -214,9 +230,10 @@ class FxPage extends StatelessWidget {
             ],
           ],
         ),
-      );
-    });
-  }
+      ),
+    );
+  });
+}
 
   List<Color> _getCurrencyGradient(String pair) {
     if (pair.contains('USD')) return [Color(0xFF2E7D32), Color(0xFF1B5E20)];

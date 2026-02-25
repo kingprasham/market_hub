@@ -26,20 +26,26 @@ class LoginScreen extends GetView<LoginController> {
                   width: 100,
                   height: 100,
                   decoration: BoxDecoration(
-                    gradient: ColorConstants.primaryGradient,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: ColorConstants.borderColor, width: 1),
                     boxShadow: [
                       BoxShadow(
-                        color: ColorConstants.primaryColor.withValues(alpha: 0.3),
+                        color: ColorConstants.primaryColor.withValues(alpha: 0.1),
                         blurRadius: 16,
                         offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.show_chart,
-                    size: 48,
-                    color: Colors.white,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 32),

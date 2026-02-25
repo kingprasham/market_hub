@@ -4,6 +4,8 @@ import '../../../../../core/constants/color_constants.dart';
 import '../../../../../core/constants/text_styles.dart';
 import '../../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../controller/settlement_controller.dart';
+import '../../../../../shared/widgets/common/metal_detail_dialog.dart';
+import 'package:intl/intl.dart';
 
 class SettlementPage extends StatelessWidget {
   const SettlementPage({super.key});
@@ -39,7 +41,7 @@ class SettlementPage extends StatelessWidget {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final item = controller.settlementData[index];
-                      return _buildSettlementCard(item);
+                      return _buildSettlementCard(context, item);
                     },
                     childCount: controller.settlementData.length,
                   ),
@@ -91,96 +93,109 @@ class SettlementPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSettlementCard(dynamic item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: ColorConstants.borderColor.withOpacity(0.5)),
-      ),
-      child: Column(
-        children: [
-          // Card Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
+  Widget _buildSettlementCard(BuildContext context, dynamic item) {
+    return InkWell(
+      onTap: () {
+        MetalDetailDialog.show(
+          context,
+          title: '${item.metal} Settlement',
+          lastPrice: 'Cash: \$${item.bidCash.toStringAsFixed(0)}/\$${item.askCash.toStringAsFixed(0)}',
+          high: '3M: \$${item.bid3M.toStringAsFixed(0)}',
+          low: '3M: \$${item.ask3M.toStringAsFixed(0)}',
+          change: 'Date: ${item.date}',
+          lastTrade: DateFormat('dd MMM hh:mma').format(DateTime.now()).toLowerCase(),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: ColorConstants.borderColor.withOpacity(0.5)),
+        ),
+        child: Column(
+          children: [
+            // Card Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F5F5),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    item.metal,
+                    style: TextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: ColorConstants.primaryBlue,
+                    ),
+                  ),
+                  Text(
+                    item.date,
+                    style: TextStyles.caption.copyWith(
+                      color: ColorConstants.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  item.metal,
-                  style: TextStyles.bodyMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: ColorConstants.primaryBlue,
+            
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // Cash Section
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildPriceSectionHeader('CASH (USD)'),
+                        const SizedBox(height: 8),
+                        _buildPriceRow('Bid', item.bidCash),
+                        const SizedBox(height: 4),
+                        _buildPriceRow('Ask', item.askCash),
+                      ],
+                    ),
                   ),
-                ),
-                Text(
-                  item.date,
-                  style: TextStyles.caption.copyWith(
-                    color: ColorConstants.textSecondary,
-                    fontWeight: FontWeight.w500,
+                  
+                  Container(
+                    height: 60,
+                    width: 1,
+                    color: ColorConstants.borderColor.withOpacity(0.5),
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
                   ),
-                ),
-              ],
+                  
+                  // 3M Section
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildPriceSectionHeader('3-MONTH (USD)'),
+                        const SizedBox(height: 8),
+                        _buildPriceRow('Bid', item.bid3M),
+                        const SizedBox(height: 4),
+                        _buildPriceRow('Ask', item.ask3M),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // Cash Section
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildPriceSectionHeader('CASH (USD)'),
-                      const SizedBox(height: 8),
-                      _buildPriceRow('Bid', item.bidCash),
-                      const SizedBox(height: 4),
-                      _buildPriceRow('Ask', item.askCash),
-                    ],
-                  ),
-                ),
-                
-                Container(
-                  height: 60,
-                  width: 1,
-                  color: ColorConstants.borderColor.withOpacity(0.5),
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                ),
-                
-                // 3M Section
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildPriceSectionHeader('3-MONTH (USD)'),
-                      const SizedBox(height: 8),
-                      _buildPriceRow('Bid', item.bid3M),
-                      const SizedBox(height: 4),
-                      _buildPriceRow('Ask', item.ask3M),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

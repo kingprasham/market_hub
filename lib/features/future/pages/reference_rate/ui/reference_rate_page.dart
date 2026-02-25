@@ -6,6 +6,7 @@ import '../../../../../core/constants/text_styles.dart';
 import '../../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../controller/reference_rate_controller.dart';
 import '../../../../../data/models/forex/forex_sheet_data.dart';
+import '../../../../../shared/widgets/common/metal_detail_dialog.dart';
 
 class ReferenceRatePage extends StatelessWidget {
   const ReferenceRatePage({super.key});
@@ -51,8 +52,8 @@ class ReferenceRatePage extends StatelessWidget {
 
           return TabBarView(
             children: [
-              _buildSbiTable(controller.sbiTableRows),
-              _buildRbiTable(controller.rbiTableRows),
+              _buildSbiTable(context, controller.sbiTableRows),
+              _buildRbiTable(context, controller.rbiTableRows),
             ],
           );
         }),
@@ -60,7 +61,7 @@ class ReferenceRatePage extends StatelessWidget {
     );
   }
 
-  Widget _buildSbiTable(List<SbiTableRow> rows) {
+  Widget _buildSbiTable(BuildContext context, List<SbiTableRow> rows) {
     if (rows.isEmpty) {
       return Center(child: Text('No SBI Data Available', style: TextStyles.bodyMedium));
     }
@@ -77,25 +78,38 @@ class ReferenceRatePage extends StatelessWidget {
         child: DataTable(
           headingRowColor: MaterialStateProperty.all(ColorConstants.cardColor),
           columnSpacing: 20,
-          border: TableBorder(
-            horizontalInside: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
-          ),
+          showCheckboxColumn: false,
           columns: _buildColumns(['DATE', 'USD/INR', 'EUR/INR', 'GBP/INR', 'JPY/INR']),
           rows: sortedRows.map((row) {
-            return DataRow(cells: [
-              _buildDateCell(row.date),
-              _buildCell(row.usd),
-              _buildCell(row.eur),
-              _buildCell(row.gbp),
-              _buildCell(row.jpy),
-            ]);
+            return DataRow(
+              onSelectChanged: (selected) {
+                if (selected == true) {
+                  MetalDetailDialog.show(
+                    context,
+                    title: 'SBI TT SELL - ${DateFormat('dd MMM yyyy').format(row.date)}',
+                    lastPrice: 'USD: ${row.usd.toStringAsFixed(2)}',
+                    high: 'EUR: ${row.eur.toStringAsFixed(2)}',
+                    low: 'GBP: ${row.gbp.toStringAsFixed(2)}',
+                    change: 'JPY: ${row.jpy.toStringAsFixed(2)}',
+                    lastTrade: DateFormat('hh:mma').format(DateTime.now()).toLowerCase(),
+                  );
+                }
+              },
+              cells: [
+                _buildDateCell(row.date),
+                _buildCell(row.usd),
+                _buildCell(row.eur),
+                _buildCell(row.gbp),
+                _buildCell(row.jpy),
+              ],
+            );
           }).toList(),
         ),
       ),
     );
   }
 
-  Widget _buildRbiTable(List<RbiTableRow> rows) {
+  Widget _buildRbiTable(BuildContext context, List<RbiTableRow> rows) {
     if (rows.isEmpty) {
       return Center(child: Text('No RBI Data Available', style: TextStyles.bodyMedium));
     }
@@ -112,18 +126,31 @@ class ReferenceRatePage extends StatelessWidget {
         child: DataTable(
           headingRowColor: MaterialStateProperty.all(ColorConstants.cardColor),
           columnSpacing: 20,
-           border: TableBorder(
-            horizontalInside: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
-          ),
+          showCheckboxColumn: false,
           columns: _buildColumns(['DATE', 'USD/INR', 'GBP/INR', 'EUR/INR', 'JPY/INR']),
           rows: sortedRows.map((row) {
-            return DataRow(cells: [
-              _buildDateCell(row.date),
-              _buildCell(row.usd, decimalPlaces: 4),
-              _buildCell(row.gbp, decimalPlaces: 4),
-              _buildCell(row.eur, decimalPlaces: 4),
-              _buildCell(row.jpy, decimalPlaces: 2),
-            ]);
+            return DataRow(
+              onSelectChanged: (selected) {
+                if (selected == true) {
+                  MetalDetailDialog.show(
+                    context,
+                    title: 'RBI FBILL - ${DateFormat('dd MMM yyyy').format(row.date)}',
+                    lastPrice: 'USD: ${row.usd.toStringAsFixed(4)}',
+                    high: 'GBP: ${row.gbp.toStringAsFixed(4)}',
+                    low: 'EUR: ${row.eur.toStringAsFixed(4)}',
+                    change: 'JPY: ${row.jpy.toStringAsFixed(2)}',
+                    lastTrade: DateFormat('hh:mma').format(DateTime.now()).toLowerCase(),
+                  );
+                }
+              },
+              cells: [
+                _buildDateCell(row.date),
+                _buildCell(row.usd, decimalPlaces: 4),
+                _buildCell(row.gbp, decimalPlaces: 4),
+                _buildCell(row.eur, decimalPlaces: 4),
+                _buildCell(row.jpy, decimalPlaces: 2),
+              ],
+            );
           }).toList(),
         ),
       ),

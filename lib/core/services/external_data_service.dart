@@ -100,7 +100,7 @@ class ExternalDataService extends GetxService {
 
     _rbiTimer = Timer.periodic(
       Duration(seconds: rbiRefreshInterval),
-      (_) => fetchRbiReferenceRates(),
+      (_) => fetchForexFromSheet(),
     );
 
     _economicTimer = Timer.periodic(
@@ -118,120 +118,16 @@ class ExternalDataService extends GetxService {
   /// Source: https://github.com/sahilgupta/sbi-fx-ratekeeper
   /// Fetches latest CSV data for major currencies
   Future<SbiTTRates?> fetchSbiTTRates() async {
-    if (isLoadingSbiRates.value) return _sbiTTRatesCache.value;
-
-    try {
-      isLoadingSbiRates.value = true;
-      final rates = <SbiTTRate>[];
-      DateTime? latestDate;
-      
-      final currencies = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'SGD', 'CHF'];
-      
-      // Fetch all currencies in parallel
-      await Future.wait(currencies.map((currency) async {
-        try {
-          final url = 'https://raw.githubusercontent.com/sahilgupta/sbi-fx-ratekeeper/main/csv_files/SBI_REFERENCE_RATES_$currency.csv';
-          final response = await _dio.get(url);
-          
-          if (response.statusCode == 200 && response.data != null) {
-            final csvContent = response.data.toString();
-            final lines = csvContent.split('\n');
-            
-            // Need at least header + 1 data line
-            if (lines.length > 1) {
-              // Get the last non-empty line
-              String lastLine = '';
-              for (int i = lines.length - 1; i >= 0; i--) {
-                if (lines[i].trim().isNotEmpty) {
-                  lastLine = lines[i];
-                  break;
-                }
-              }
-              
-              if (lastLine.isNotEmpty) {
-                final parts = lastLine.split(',');
-                // Expecting structure: DATE, PDF FILE, TT BUY, TT SELL, BILL BUY, BILL SELL, ...
-                if (parts.length >= 6) {
-                  final dateStr = parts[0].trim();
-                  // Date format example: 2024-01-03 09:00
-                  final date = DateTime.tryParse(dateStr);
-                  if (date != null && (latestDate == null || date.isAfter(latestDate!))) {
-                    latestDate = date;
-                  }
-                  
-                  rates.add(SbiTTRate(
-                    currency: currency,
-                    currencyName: _getCurrencyName(currency),
-                    ttBuyingRate: _parseDouble(parts[2]),
-                    ttSellingRate: _parseDouble(parts[3]),
-                    billBuyingRate: _parseDouble(parts[4]),
-                    billSellingRate: _parseDouble(parts[5]),
-                    previousTtBuy: 0, 
-                    previousTtSell: 0,
-                  ));
-                }
-              }
-            }
-          }
-        } catch (e) {
-          debugPrint('Failed to fetch $currency: $e');
-        }
-      }));
-
-      if (rates.isNotEmpty) {
-        // Sort by currency priority (USD, EUR, GBP first)
-        final priority = {'USD': 1, 'EUR': 2, 'GBP': 3, 'JPY': 4, 'AUD': 5, 'CAD': 6, 'SGD': 7, 'CHF': 8};
-        rates.sort((a, b) => (priority[a.currency] ?? 99).compareTo(priority[b.currency] ?? 99));
-
-        _sbiTTRatesCache.value = SbiTTRates(
-          effectiveDate: latestDate ?? DateTime.now(),
-          lastUpdated: DateTime.now(),
-          rates: rates,
-        );
-        debugPrint('✅ Loaded ${rates.length} SBI TT rates from sahilgupta/sbi-fx-ratekeeper');
-        return _sbiTTRatesCache.value;
-      }
-
-      debugPrint('⚠️ No SBI TT rates data found from RateKeeper repo');
-      return null;
-    } catch (e) {
-      debugPrint('Error fetching SBI TT rates: $e');
-      return _sbiTTRatesCache.value;
-    } finally {
-      isLoadingSbiRates.value = false;
-    }
+    await fetchForexFromSheet();
+    return _sbiTTRatesCache.value;
   }
 
   /// Fetch RBI Reference Rates
   /// Source: https://www.rbi.org.in/scripts/ReferenceRateArchive.aspx
   Future<List<RbiReferenceRate>> fetchRbiReferenceRates() async {
-    if (isLoadingRbiRates.value) return _rbiRatesCache.value;
-
-    try {
-      isLoadingRbiRates.value = true;
-
-      // Try to fetch from our backend first
-      try {
-        final response = await ApiClient().get('/api/market/rbi-reference-rates');
-        if (response.data != null && response.data['success'] == true) {
-          final List<dynamic> data = response.data['data'];
-          _rbiRatesCache.value = data
-              .map((json) => RbiReferenceRate.fromJson(json))
-              .toList();
-
-          return _rbiRatesCache.value;
-        }
-      } catch (e) {
-        debugPrint('Backend RBI rates fetch failed: $e');
-      }
-
-      return _rbiRatesCache.value;
-    } catch (e) {
-      debugPrint('Error fetching RBI rates: $e');
-      return _rbiRatesCache.value;
-    } finally {
-      isLoadingRbiRates.value = false;
-    }
+    // Priority: Force fetch from sheet if requested or just rely on initializeAllServices
+    await fetchForexFromSheet();
+    return _rbiRatesCache.value;
   }
 
   /// Fetch Economic Calendar Events
@@ -385,6 +281,34 @@ class ExternalDataService extends GetxService {
         }
 
         _forexSheetCache.value = forexData;
+        
+        // Update legacy RBI/SBI caches for the rest of the app
+        if (forexData.sbiRows.isNotEmpty) {
+          final latestSbi = forexData.sbiRows.last;
+          final List<SbiTTRate> rates = [
+            _createSbiRate('USD', latestSbi.usd),
+            _createSbiRate('EUR', latestSbi.eur),
+            _createSbiRate('GBP', latestSbi.gbp),
+            _createSbiRate('JPY', latestSbi.jpy),
+          ];
+          
+          _sbiTTRatesCache.value = SbiTTRates(
+            effectiveDate: latestSbi.date,
+            lastUpdated: DateTime.now(),
+            rates: rates,
+          );
+        }
+
+        if (forexData.rbiRows.isNotEmpty) {
+          final latestRbi = forexData.rbiRows.last;
+          _rbiRatesCache.value = [
+            _createRbiRate('USD', latestRbi.usd, latestRbi.date),
+            _createRbiRate('GBP', latestRbi.gbp, latestRbi.date),
+            _createRbiRate('EUR', latestRbi.eur, latestRbi.date),
+            _createRbiRate('JPY', latestRbi.jpy, latestRbi.date),
+          ];
+        }
+
         return forexData;
       } else {
         debugPrint('📊 Forex sheet fetch failed: status=${response.statusCode}');
@@ -441,6 +365,30 @@ class ExternalDataService extends GetxService {
     if (value is num) return value.toDouble();
     if (value is String) return double.tryParse(value.replaceAll(',', '')) ?? 0.0;
     return 0.0;
+  }
+
+  SbiTTRate _createSbiRate(String currency, double rate) {
+    return SbiTTRate(
+      currency: currency,
+      currencyName: _getCurrencyName(currency),
+      ttBuyingRate: rate,
+      ttSellingRate: rate,
+      billBuyingRate: rate,
+      billSellingRate: rate,
+      previousTtBuy: 0,
+      previousTtSell: 0,
+    );
+  }
+
+  RbiReferenceRate _createRbiRate(String currency, double rate, DateTime date) {
+    return RbiReferenceRate(
+      currency: currency,
+      currencyName: _getCurrencyName(currency),
+      rate: rate,
+      previousRate: 0,
+      effectiveDate: date,
+      lastUpdated: DateTime.now(),
+    );
   }
   
   String _getCurrencyName(String code) {

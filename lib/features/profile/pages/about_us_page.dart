@@ -37,16 +37,13 @@ class AboutUsPage extends StatelessWidget {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                gradient: ColorConstants.primaryGradient,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Center(
-                child: Text(
-                  'MH',
-                  style: TextStyles.h1.copyWith(
-                    color: Colors.white,
-                    fontSize: 36,
-                  ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  fit: BoxFit.cover,
                 ),
               ),
             ),

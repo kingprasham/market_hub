@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/color_constants.dart';
 import '../../../core/constants/text_styles.dart';
-import 'app_logo.dart';
+import 'package:market_hub_new/shared/widgets/common/app_logo.dart';
 
 class CommonAppBarTitle extends StatelessWidget {
   final String title;

@@ -4,7 +4,7 @@ import '../../../core/constants/color_constants.dart';
 import '../controller/search_controller.dart';
 import 'package:shimmer/shimmer.dart';
 
-import '../../../shared/widgets/common/app_logo.dart';
+import 'package:market_hub_new/shared/widgets/common/app_logo.dart';
 
 class SearchPage extends GetView<SearchController> {
   const SearchPage({super.key});

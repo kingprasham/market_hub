@@ -4,6 +4,8 @@ import '../../../../../core/constants/color_constants.dart';
 import '../../../../../core/constants/text_styles.dart';
 import '../../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../controller/china_shfe_controller.dart';
+import '../../../../../shared/widgets/common/metal_detail_dialog.dart';
+import 'package:intl/intl.dart';
 
 class ChinaSHFEPage extends StatelessWidget {
   const ChinaSHFEPage({super.key});
@@ -97,17 +99,31 @@ class ChinaSHFEPage extends StatelessWidget {
     return Obx(() {
       controller.watchlistUpdateTrigger.value;
       
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            bottom: BorderSide(
-              color: ColorConstants.borderColor.withOpacity(0.5),
-              width: 1,
+      return InkWell(
+        onTap: () {
+          if (!hasData) return;
+          MetalDetailDialog.show(
+            Get.context!,
+            title: metal.name,
+            lastPrice: '¥${metal.lastPrice!.toStringAsFixed(0)}',
+            high: metal.high != null ? '¥${metal.high!.toStringAsFixed(0)}' : null,
+            low: metal.low != null ? '¥${metal.low!.toStringAsFixed(0)}' : null,
+            change: '${metal.change! > 0 ? '+' : ''}${metal.change!.toStringAsFixed(0)} (${metal.changePercent!.toStringAsFixed(2)}%)',
+            isPositive: isPositive,
+            lastTrade: DateFormat('dd MMM hh:mma').format(DateTime.now()).toLowerCase(),
+          );
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              bottom: BorderSide(
+                color: ColorConstants.borderColor.withOpacity(0.5),
+                width: 1,
+              ),
             ),
           ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
           children: [
             Row(
@@ -221,9 +237,10 @@ class ChinaSHFEPage extends StatelessWidget {
             ],
           ],
         ),
-      );
-    });
-  }
+      ),
+    );
+  });
+}
 
   List<Color> _getMetalGradient(String symbol) {
     if (symbol.contains('CU')) return [const Color(0xFFB87333), const Color(0xFF8B5A2B)];

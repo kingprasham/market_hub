@@ -12,6 +12,7 @@ import '../../home/ui/widgets/side_menu.dart';
 
 import 'package:intl/intl.dart';
 import '../../../shared/widgets/common/common_app_bar_title.dart';
+import '../../../shared/widgets/common/metal_detail_dialog.dart';
 
 class SpotPriceScreen extends GetView<SpotPriceController> {
   const SpotPriceScreen({super.key});
@@ -339,40 +340,52 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
               itemBuilder: (context, index) {
                   final item = controller.ferrousPrices[index];
                   final key = 'Ferrous|${item.category}|${item.city}';
-                  return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[200]!),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                                Text(
-                                    item.city,
-                                    style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
-                                ),
-                                Text(
-                                    Formatters.formatCurrency(item.price),
-                                    style: TextStyles.bodyLarge.copyWith(
-                                        color: ColorConstants.primaryBlue,
-                                        fontWeight: FontWeight.bold
-                                    ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _getUpdatedAgo(key),
-                            style: TextStyles.caption.copyWith(color: ColorConstants.textHint, fontSize: 10),
-                          ),
-                        ],
-                      ),
+                  return InkWell(
+                    onTap: () {
+                      MetalDetailDialog.show(
+                        context,
+                        title: '${item.category} - ${item.city}',
+                        lastPrice: Formatters.formatCurrency(item.price),
+                        change: item.changeRaw ?? '--',
+                        lastTrade: DateFormat('dd MMM hh:mma').format(item.lastUpdated).toLowerCase(),
+                        isPositive: true,
+                      );
+                    },
+                    child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                  Text(
+                                      item.city,
+                                      style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  Text(
+                                      Formatters.formatCurrency(item.price),
+                                      style: TextStyles.bodyLarge.copyWith(
+                                          color: ColorConstants.primaryBlue,
+                                          fontWeight: FontWeight.bold
+                                      ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _getUpdatedAgo(key),
+                              style: TextStyles.caption.copyWith(color: ColorConstants.textHint, fontSize: 10),
+                            ),
+                          ],
+                        ),
+                    ),
                   );
               },
           );
@@ -531,19 +544,28 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
     return items.map((item) {
       // Sub-header row (e.g. "COPPER SCRAP (ARM)") — no prices, just a label
       if (item.isSubHeader) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 4, top: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            item.name,
-            style: TextStyles.bodySmall.copyWith(
-              fontWeight: FontWeight.w600,
-              color: ColorConstants.textSecondary,
-              letterSpacing: 0.3,
+        return InkWell(
+          onTap: () {
+            MetalDetailDialog.show(
+              Get.context!,
+              title: '${sectionName} - ${item.name} (Delhi)',
+              lastPrice: item.displayPrice1,
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 4, top: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              item.name,
+              style: TextStyles.bodySmall.copyWith(
+                fontWeight: FontWeight.w600,
+                color: ColorConstants.textSecondary,
+                letterSpacing: 0.3,
+              ),
             ),
           ),
         );
@@ -552,8 +574,19 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
       final hasTwoPrices = item.price2 != null;
       final key = 'NonFerrous|$sectionName|${item.name}|${controller.selectedNonFerrousCity.value}';
       
-      return Container(
-        margin: const EdgeInsets.only(bottom: 8),
+      return InkWell(
+        onTap: () {
+          MetalDetailDialog.show(
+            Get.context!,
+            title: '${sectionName} - ${item.name} (${controller.selectedNonFerrousCity.value})',
+            lastPrice: item.displayPrice1,
+            lastTrade: item.lastUpdated != null 
+                ? DateFormat('dd MMM hh:mma').format(item.lastUpdated!).toLowerCase()
+                : null,
+          );
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -626,8 +659,9 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
             ),
           ],
         ),
-      );
-    }).toList();
+      ),
+    );
+  }).toList();
   }
 
 
@@ -646,7 +680,7 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
           child: Text(
             section.sectionName.toUpperCase(),
             style: TextStyles.bodyMedium.copyWith(
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: ColorConstants.textPrimary,
               letterSpacing: 1.2,
             ),
@@ -795,71 +829,83 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
                   final item = controller.minorPrices[index];
                   final key = 'Minor|${item.category}|${item.item}|${item.quality}';
                   // Item, Quality, Price, Unit, Date
-                  return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[200]!),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  item.item, // Item Name
-                                  style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                  return InkWell(
+                    onTap: () {
+                      MetalDetailDialog.show(
+                        context,
+                        title: '${item.item} (${item.quality})',
+                        lastPrice: item.price,
+                        lastTrade: item.parsedDate != null 
+                            ? DateFormat('dd MMM hh:mma').format(item.parsedDate!).toLowerCase()
+                            : item.date,
+                      );
+                    },
+                    child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    item.item, // Item Name
+                                    style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    Formatters.formatCurrency(double.tryParse(item.price.replaceAll(',', '')) ?? 0),
-                                    style: TextStyles.bodyLarge.copyWith(
-                                        color: ColorConstants.primaryBlue,
-                                        fontWeight: FontWeight.bold
+                                const SizedBox(width: 8),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      Formatters.formatCurrency(double.tryParse(item.price.replaceAll(',', '')) ?? 0),
+                                      style: TextStyles.bodyLarge.copyWith(
+                                          color: ColorConstants.primaryBlue,
+                                          fontWeight: FontWeight.bold
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    item.unit,
-                                    style: TextStyles.caption.copyWith(color: ColorConstants.textSecondary),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                             children: [
-                               Expanded(
-                                 child: Text(
-                                   item.quality, // Quality & Origin
-                                   style: TextStyles.caption.copyWith(color: ColorConstants.textSecondary),
-                                   maxLines: 1,
-                                   overflow: TextOverflow.ellipsis,
+                                    Text(
+                                      item.unit,
+                                      style: TextStyles.caption.copyWith(color: ColorConstants.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                               children: [
+                                 Expanded(
+                                   child: Text(
+                                     item.quality, // Quality & Origin
+                                     style: TextStyles.caption.copyWith(color: ColorConstants.textSecondary),
+                                     maxLines: 1,
+                                     overflow: TextOverflow.ellipsis,
+                                   ),
                                  ),
-                               ),
-                               Text(
-                                 item.date,
-                                 style: TextStyles.caption.copyWith(color: ColorConstants.textSecondary),
-                               ),
-                             ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            _getUpdatedAgo(key),
-                            style: TextStyles.caption.copyWith(color: ColorConstants.textHint, fontSize: 10),
-                          ),
-                        ],
-                      ),
+                                 Text(
+                                   item.date,
+                                   style: TextStyles.caption.copyWith(color: ColorConstants.textSecondary),
+                                 ),
+                               ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _getUpdatedAgo(key),
+                              style: TextStyles.caption.copyWith(color: ColorConstants.textHint, fontSize: 10),
+                            ),
+                          ],
+                        ),
+                    ),
                   );
               },
           );

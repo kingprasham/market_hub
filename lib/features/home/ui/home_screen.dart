@@ -9,6 +9,7 @@ import '../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../controller/home_controller.dart';
 import '../data/ad_data.dart';
 import 'widgets/side_menu.dart';
+import 'package:market_hub_new/shared/widgets/common/app_logo.dart';
 
 class HomeScreen extends GetView<HomeController> {
   const HomeScreen({super.key});
@@ -24,18 +25,7 @@ class HomeScreen extends GetView<HomeController> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: ColorConstants.primaryGradient,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.trending_up,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
+            const AppLogo(size: 36, iconSize: 24, borderRadius: 10),
             const SizedBox(width: 8),
             Text(
               'Market Hub',

@@ -5,6 +5,8 @@ import '../../../../../core/constants/text_styles.dart';
 import '../../../../../core/utils/formatters.dart';
 import '../../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../controller/us_comex_controller.dart';
+import '../../../../../shared/widgets/common/metal_detail_dialog.dart';
+import 'package:intl/intl.dart';
 
 class USComexPage extends StatelessWidget {
   const USComexPage({super.key});
@@ -173,17 +175,31 @@ class USComexPage extends StatelessWidget {
     return Obx(() {
       controller.watchlistUpdateTrigger.value;
       
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            bottom: BorderSide(
-              color: ColorConstants.borderColor.withOpacity(0.5),
-              width: 1,
+      return InkWell(
+        onTap: () {
+          if (!hasData) return;
+          MetalDetailDialog.show(
+            Get.context!,
+            title: metal.name,
+            lastPrice: '\$${metal.lastPrice!.toStringAsFixed(2)}',
+            high: metal.high != null ? '\$${metal.high!.toStringAsFixed(2)}' : null,
+            low: metal.low != null ? '\$${metal.low!.toStringAsFixed(2)}' : null,
+            change: '${metal.change! > 0 ? '+' : ''}${metal.change!.toStringAsFixed(2)} (${metal.changePercent!.toStringAsFixed(2)}%)',
+            isPositive: isPositive,
+            lastTrade: DateFormat('dd MMM hh:mma').format(DateTime.now()).toLowerCase(),
+          );
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              bottom: BorderSide(
+                color: ColorConstants.borderColor.withOpacity(0.5),
+                width: 1,
+              ),
             ),
           ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
           children: [
             Row(
@@ -297,9 +313,10 @@ class USComexPage extends StatelessWidget {
             ],
           ],
         ),
-      );
-    });
-  }
+      ),
+    );
+  });
+}
 
   List<Color> _getMetalGradient(String symbol) {
     if (symbol.contains('GC')) return [const Color(0xFFFFD700), const Color(0xFFDAA520)];
