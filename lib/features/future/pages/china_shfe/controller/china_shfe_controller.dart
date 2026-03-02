@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../../../core/services/watchlist_service.dart';
 import '../../../../../core/services/scraper/fx678_scraper_service.dart';
+import '../../../../../core/services/market_session_service.dart';
 import '../../../../../data/models/watchlist/watchlist_item_model.dart';
 import '../../../../../core/utils/helpers.dart';
 
@@ -52,6 +53,7 @@ class ChinaSHFEController extends GetxController {
   ];
 
   WatchlistService? _watchlistService;
+  MarketSessionService? _sessionService;
   Timer? _refreshTimer;
 
   @override
@@ -65,6 +67,7 @@ class ChinaSHFEController extends GetxController {
   void _initService() {
     try {
       _watchlistService = Get.find<WatchlistService>();
+      _sessionService = Get.put(MarketSessionService());
       if (_watchlistService != null) {
         ever(_watchlistService!.watchlistItems, (_) => watchlistUpdateTrigger.value++);
         ever(_watchlistService!.starredItemIds, (_) => watchlistUpdateTrigger.value++);
@@ -119,6 +122,24 @@ class ChinaSHFEController extends GetxController {
               keywords.any((kw) => s.name.toUpperCase().contains(kw.toUpperCase())),
             );
             if (match != null) {
+              // Custom change calculation based on session time
+              double finalChange = match.change;
+              double finalPercent = match.changePercent;
+
+              if (_sessionService != null && match.price > 0) {
+                final results = _sessionService!.calculateChange(
+                  MarketType.china, 
+                  base[i].symbol, 
+                  match.price, 
+                  match.prev,
+                );
+                finalChange = results['change']!;
+                finalPercent = results['percent']!;
+                
+                // Track current price for reference capture
+                _sessionService!.updateReferencePrice(MarketType.china, base[i].symbol, match.price);
+              }
+
               base[i] = SHFEMetal(
                 id: base[i].id,
                 symbol: base[i].symbol,
@@ -129,8 +150,8 @@ class ChinaSHFEController extends GetxController {
                 low: match.low == 0 ? null : match.low,
                 prevHigh: match.prevHigh == 0 ? null : match.prevHigh,
                 prevLow: match.prevLow == 0 ? null : match.prevLow,
-                change: match.change,
-                changePercent: match.changePercent,
+                change: finalChange,
+                changePercent: finalPercent,
                 lastUpdated: now,
               );
             }

@@ -110,6 +110,7 @@ class EmailVerificationController extends GetxController {
           fullName: user.fullName,
           email: user.email,
           phone: '${user.countryCode}${user.phoneNumber}',
+          pin: user.pincode ?? '0000',
           whatsapp: user.whatsappNumber != null
               ? '${user.whatsappCountryCode}${user.whatsappNumber}'
               : null,
@@ -162,6 +163,7 @@ class EmailVerificationController extends GetxController {
           fullName: user.fullName,
           email: newEmail,
           phone: '${user.countryCode}${user.phoneNumber}',
+          pin: user.pincode ?? '0000',
           whatsapp: user.whatsappNumber != null
               ? '${user.whatsappCountryCode}${user.whatsappNumber}'
               : null,

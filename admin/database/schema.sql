@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS users (
     whatsapp VARCHAR(15),
     pin_code VARCHAR(6),
     pin_hash VARCHAR(255),
+    plain_pin VARCHAR(10),
     visiting_card VARCHAR(255),
     plan_id INT,
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',

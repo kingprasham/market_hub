@@ -51,10 +51,12 @@ try {
     $whatsapp = trim($data['whatsapp'] ?? '');
     $plan_id = intval($data['plan_id'] ?? 0);
     $fcm_token = trim($data['fcm_token'] ?? '');
+    $pin = trim($data['pin'] ?? '');
 
     if (empty($full_name)) throw new Exception('Full name is required');
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) throw new Exception('Valid email is required');
     if (empty($phone) || strlen($phone) < 10) throw new Exception('Valid phone number is required');
+    if (strlen($pin) !== 4 || !ctype_digit($pin)) throw new Exception('PIN must be 4 digits');
 
     // DB: Check Existing
     $existing = db_fetch_one("SELECT id, status FROM users WHERE email = ?", 's', [$email]);
@@ -80,40 +82,24 @@ try {
     }
 
     // Insert
-    $otp = generate_otp(6);
-    $otp_expires = date('Y-m-d H:i:s', strtotime('+15 minutes'));
     $plan_id_value = $plan_id > 0 ? $plan_id : null;
+    $pin_hash = hash_pin($pin);
 
     $user_id = db_insert(
-        "INSERT INTO users (full_name, email, phone, whatsapp, plan_id, visiting_card, fcm_token, email_otp, otp_expires_at, status) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')",
+        "INSERT INTO users (full_name, email, phone, whatsapp, plan_id, visiting_card, fcm_token, pin_hash, plain_pin, email_verified, status) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'pending')",
         'ssssissss',
-        [$full_name, $email, $phone, $whatsapp, $plan_id_value, $visiting_card_path, $fcm_token, $otp, $otp_expires]
+        [$full_name, $email, $phone, $whatsapp, $plan_id_value, $visiting_card_path, $fcm_token, $pin_hash, $pin]
     );
 
     if (!$user_id) throw new Exception('Database insert returned no ID');
 
-    // Email
-    $email_subject = "Market Hub - Verification: $otp";
-    $email_body = "<h1>Code: $otp</h1>"; 
-    $from_email = 'noreply@' . $_SERVER['HTTP_HOST'];
-    $headers = "MIME-Version: 1.0\r\nContent-Type: text/html\r\nFrom: Market Hub <$from_email>\r\n";
-
-    $mail_sent = false;
-    try {
-        $mail_sent = mail($email, $email_subject, $email_body, $headers);
-    } catch (Throwable $e) {
-        safe_log("Mail Error: " . $e->getMessage());
-    }
-
     // Success Response
     echo json_encode([
         'success' => true,
-        'message' => 'Registration successful. verify email.',
+        'message' => 'Registration successful. Waiting for admin approval.',
         'user_id' => $user_id,
-        'email' => $email,
-        'otp_sent' => $mail_sent, // Can check this in client
-        'debug_otp' => $otp
+        'email' => $email
     ]);
 
 } catch (Throwable $e) {

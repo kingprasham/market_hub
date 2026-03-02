@@ -177,6 +177,8 @@ class LocalStorage {
 
   // Notification storage
   static const String _notificationsKey = 'stored_notifications';
+  static const String _readNotificationsKey = 'read_notifications_ids';
+  static const String _deletedNotificationsKey = 'deleted_notifications_ids';
 
   /// Save a notification to local storage
   static Future<void> addNotification(Map<String, dynamic> notification) async {
@@ -213,6 +215,47 @@ class LocalStorage {
   /// Clear all notifications
   static Future<void> clearNotifications() async {
     await _cacheBox.delete(_notificationsKey);
+  }
+
+  /// Remove a single notification from local storage
+  static Future<void> removeNotification(String id) async {
+    final notifications = getNotifications();
+    notifications.removeWhere((n) => n['id'] == id);
+    await _cacheBox.put(_notificationsKey, notifications);
+  }
+
+  /// Get list of notification IDs that have been read
+  static List<String> getReadNotificationIds() {
+    return List<String>.from(_cacheBox.get(_readNotificationsKey) ?? []);
+  }
+
+  /// Mark a notification as read (persisted ID)
+  static Future<void> addReadNotificationId(String id) async {
+    final ids = getReadNotificationIds();
+    if (!ids.contains(id)) {
+      ids.add(id);
+      await _cacheBox.put(_readNotificationsKey, ids);
+    }
+  }
+
+  /// Get list of notification IDs that have been deleted
+  static List<String> getDeletedNotificationIds() {
+    return List<String>.from(_cacheBox.get(_deletedNotificationsKey) ?? []);
+  }
+
+  /// Mark a notification as deleted (persisted ID)
+  static Future<void> addDeletedNotificationId(String id) async {
+    final ids = getDeletedNotificationIds();
+    if (!ids.contains(id)) {
+      ids.add(id);
+      await _cacheBox.put(_deletedNotificationsKey, ids);
+    }
+  }
+
+  /// Clear read/deleted tracking (optional maintenance)
+  static Future<void> clearReadDeletedTracking() async {
+    await _cacheBox.delete(_readNotificationsKey);
+    await _cacheBox.delete(_deletedNotificationsKey);
   }
 
   // Saved News storage

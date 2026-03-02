@@ -215,7 +215,7 @@ class NotificationsPage extends GetView<NotificationsController> {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       onDismissed: (direction) {
-        controller.notifications.remove(notification);
+        controller.deleteNotification(notification.id);
         Get.snackbar(
           'Deleted',
           'Notification removed',

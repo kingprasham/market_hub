@@ -53,6 +53,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         
         redirect('users.php', 'success', 'User rejected');
     }
+    
+    if ($_POST['action'] === 'change_pin') {
+        $new_pin = trim($_POST['new_pin'] ?? '');
+        if (strlen($new_pin) !== 4 || !ctype_digit($new_pin)) {
+            redirect('users.php', 'error', 'PIN must be exactly 4 digits');
+        }
+        $pin_hash = hash_pin($new_pin);
+        db_query(
+            "UPDATE users SET pin_hash = ?, plain_pin = ? WHERE id = ?",
+            'ssi',
+            [$pin_hash, $new_pin, $user_id]
+        );
+        redirect('users.php', 'success', 'User PIN updated successfully');
+    }
 }
 
 // Get filter
@@ -148,6 +162,10 @@ $plans = db_fetch_all("SELECT * FROM plans WHERE is_active = 1 ORDER BY price");
                                 <i class="bi bi-eye"></i>
                             </a>
                             
+                            <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#pinModal<?= $user['id'] ?>" title="Manage PIN">
+                                <i class="bi bi-key"></i>
+                            </button>
+                            
                             <?php if ($user['status'] === 'pending'): ?>
                             <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveModal<?= $user['id'] ?>" title="Approve">
                                 <i class="bi bi-check-lg"></i>
@@ -234,7 +252,44 @@ $plans = db_fetch_all("SELECT * FROM plans WHERE is_active = 1 ORDER BY price");
                             </div>
                         </div>
                     </div>
+                    </div>
                     <?php endif; ?>
+                    
+                    <!-- Manage PIN Modal -->
+                    <div class="modal fade" id="pinModal<?= $user['id'] ?>" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title"><i class="bi bi-key me-2"></i>Manage PIN</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form method="POST">
+                                    <div class="modal-body">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="action" value="change_pin">
+                                        <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
+                                        
+                                        <p>Manage PIN for <strong><?= e($user['full_name']) ?></strong></p>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Current PIN</label>
+                                            <input type="text" class="form-control" value="<?= e($user['plain_pin'] ?? 'Not Set') ?>" readonly disabled>
+                                            <small class="form-text text-muted">This is the readable PIN currently set for this user.</small>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">New 4-Digit PIN</label>
+                                            <input type="text" name="new_pin" class="form-control" pattern="\d{4}" maxlength="4" required placeholder="e.g. 1234">
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-warning"><i class="bi bi-save me-2"></i>Update PIN</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                     
                     <?php endforeach; ?>
                 </tbody>

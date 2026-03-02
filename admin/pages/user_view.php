@@ -140,8 +140,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </p>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="text-muted small">PIN Code</label>
+                        <label class="text-muted small">PIN Code (Postal)</label>
                         <p class="mb-0"><?= e($user['pin_code']) ?: '-' ?></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small">Auth PIN (Password)</label>
+                        <p class="mb-0 fw-bold text-primary"><?= e($user['plain_pin']) ?: 'Not Set' ?></p>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="text-muted small">Registered On</label>

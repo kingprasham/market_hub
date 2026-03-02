@@ -18,6 +18,7 @@ class RegistrationController extends GetxController {
   final phoneController = TextEditingController();
   final emailController = TextEditingController();
   final pincodeController = TextEditingController();
+  final confirmPincodeController = TextEditingController();
 
   final whatsappCountryCode = '+91'.obs;
   final phoneCountryCode = '+91'.obs;
@@ -42,13 +43,24 @@ class RegistrationController extends GetxController {
     phoneController.dispose();
     emailController.dispose();
     pincodeController.dispose();
+    confirmPincodeController.dispose();
     super.onClose();
   }
 
   String? validateName(String? value) => Validators.validateName(value);
   String? validatePhone(String? value) => Validators.validatePhone(value);
   String? validateEmail(String? value) => Validators.validateEmail(value);
-  String? validatePincode(String? value) => Validators.validatePincode(value);
+  String? validatePincode(String? value) => Validators.validatePin(value);
+  
+  String? validateConfirmPincode(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please confirm your 4-digit PIN';
+    }
+    if (value != pincodeController.text) {
+      return 'PINs do not match';
+    }
+    return null;
+  }
 
   void selectCountryCode(bool isWhatsapp) {
     // Show country code picker
@@ -203,6 +215,7 @@ class RegistrationController extends GetxController {
         fullName: nameController.text.trim(),
         email: emailController.text.trim(),
         phone: '${phoneCountryCode.value}${phoneController.text.trim()}',
+        pin: pincodeController.text.trim(),
         whatsapp: whatsappController.text.isNotEmpty
             ? '${whatsappCountryCode.value}${whatsappController.text.trim()}'
             : null,
@@ -221,25 +234,16 @@ class RegistrationController extends GetxController {
           whatsappNumber: whatsappController.text.trim(),
           whatsappCountryCode: whatsappCountryCode.value,
           pincode: pincodeController.text.trim(),
-          isEmailVerified: false,
+          isEmailVerified: true, // Auto-verified in new flow
           isApproved: false,
           createdAt: DateTime.now(),
         );
         await LocalStorage.saveUser(user);
 
-        // Show OTP for testing (remove in production!)
-        final debugOtp = response['debug_otp'];
-        if (debugOtp != null) {
-          Get.snackbar('Success', 'Your OTP: $debugOtp', 
-            snackPosition: SnackPosition.BOTTOM,
-            duration: const Duration(seconds: 8),
-          );
-        } else {
-          Helpers.showSuccess(response['message'] ?? 'OTP sent to your email');
-        }
+        Helpers.showSuccess(response['message'] ?? 'Registration successful');
 
-        // Navigate to email verification
-        Get.offAllNamed(AppRoutes.emailVerification);
+        // Navigate directly to pending approval
+        Get.offAllNamed(AppRoutes.pendingApproval);
       } else {
         Helpers.showError(response['error'] ?? 'Registration failed');
       }

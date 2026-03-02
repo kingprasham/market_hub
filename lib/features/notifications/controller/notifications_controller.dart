@@ -26,19 +26,27 @@ class NotificationsController extends GetxController {
     _isLoading.value = true;
 
     try {
+      // Load persisted read and deleted IDs
+      final readIds = LocalStorage.getReadNotificationIds();
+      final deletedIds = LocalStorage.getDeletedNotificationIds();
       final Set<String> seenIds = {};
       final List<NotificationModel> allNotifications = [];
       
       // 1. Load push notifications from local storage first (most recent)
       final storedNotifications = LocalStorage.getNotifications();
       for (final json in storedNotifications) {
+        final id = json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
+        
+        // Skip if deleted
+        if (deletedIds.contains(id)) continue;
+
         final notification = NotificationModel(
-          id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          id: id,
           title: json['title'] ?? '',
           message: json['message'] ?? '',
           type: _getTypeFromString(json['type']),
           timestamp: DateTime.tryParse(json['timestamp'] ?? '') ?? DateTime.now(),
-          isRead: json['isRead'] ?? false,
+          isRead: json['isRead'] ?? readIds.contains(id),
         );
         if (!seenIds.contains(notification.id)) {
           seenIds.add(notification.id);
@@ -71,6 +79,10 @@ class NotificationsController extends GetxController {
           }
 
           final id = json['id']?.toString() ?? '';
+          
+          // Skip if deleted
+          if (deletedIds.contains(id)) continue;
+
           if (!seenIds.contains(id)) {
             seenIds.add(id);
             allNotifications.add(NotificationModel(
@@ -79,7 +91,7 @@ class NotificationsController extends GetxController {
               message: json['description'] ?? '',
               type: type,
               timestamp: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-              isRead: false,
+              isRead: readIds.contains(id),
             ));
           }
         }
@@ -171,13 +183,29 @@ class NotificationsController extends GetxController {
     if (index != -1) {
       _notifications[index] = _notifications[index].copyWith(isRead: true);
       _notifications.refresh();
+      
+      // Persist read status
+      LocalStorage.addReadNotificationId(notificationId);
+      LocalStorage.markNotificationRead(notificationId); // Update stored push notification if any
     }
   }
 
   void markAllAsRead() {
+    for (var notification in _notifications) {
+      if (!notification.isRead) {
+        LocalStorage.addReadNotificationId(notification.id);
+        LocalStorage.markNotificationRead(notification.id);
+      }
+    }
     _notifications.value = _notifications
         .map((notification) => notification.copyWith(isRead: true))
         .toList();
+  }
+
+  void deleteNotification(String notificationId) {
+    _notifications.removeWhere((n) => n.id == notificationId);
+    LocalStorage.addDeletedNotificationId(notificationId);
+    LocalStorage.removeNotification(notificationId);
   }
 
   void clearAll() {
@@ -188,7 +216,14 @@ class NotificationsController extends GetxController {
       textCancel: 'Cancel',
       confirmTextColor: Get.theme.colorScheme.onPrimary,
       onConfirm: () {
+        // Persist deleted status for all current notifications
+        for (var notification in _notifications) {
+          LocalStorage.addDeletedNotificationId(notification.id);
+        }
+        
         _notifications.clear();
+        LocalStorage.clearNotifications();
+        
         Get.back();
         Get.snackbar(
           'Success',

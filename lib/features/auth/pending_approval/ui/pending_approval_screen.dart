@@ -13,11 +13,12 @@ class PendingApprovalScreen extends GetView<PendingApprovalController> {
     return Scaffold(
       backgroundColor: ColorConstants.backgroundColor,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
               // Waiting Animation
               Container(
                 width: 120,
@@ -106,6 +107,7 @@ class PendingApprovalScreen extends GetView<PendingApprovalController> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

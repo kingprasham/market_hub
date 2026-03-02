@@ -87,15 +87,29 @@ class RegistrationScreen extends GetView<RegistrationController> {
                 ),
                 const SizedBox(height: 20),
 
-                // Pincode
+                // Set PIN
                 CustomTextField(
                   controller: controller.pincodeController,
-                  label: 'Pincode',
-                  hint: 'Enter 6-digit pincode',
+                  label: 'Set Custom 4-Digit PIN',
+                  hint: 'Enter 4-digit PIN for login',
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
+                  obscureText: true,
+                  prefixIcon: const Icon(Icons.password_outlined),
+                  validator: controller.validatePincode,
+                ),
+                const SizedBox(height: 20),
+
+                // Confirm PIN
+                CustomTextField(
+                  controller: controller.confirmPincodeController,
+                  label: 'Confirm 4-Digit PIN',
+                  hint: 'Re-enter 4-digit PIN',
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.done,
-                  prefixIcon: const Icon(Icons.location_on_outlined),
-                  validator: controller.validatePincode,
+                  obscureText: true,
+                  prefixIcon: const Icon(Icons.password_outlined),
+                  validator: controller.validateConfirmPincode,
                 ),
                 const SizedBox(height: 20),
 

@@ -102,6 +102,7 @@ class AdminApiService extends GetxService {
     required String fullName,
     required String email,
     required String phone,
+    required String pin,
     String? whatsapp,
     int? planId,
     String? visitingCardPath,
@@ -128,6 +129,7 @@ class AdminApiService extends GetxService {
         'full_name': fullName,
         'email': email,
         'phone': phone,
+        'pin': pin,
         if (deviceToken != null) 'fcm_token': deviceToken,
       };
       
