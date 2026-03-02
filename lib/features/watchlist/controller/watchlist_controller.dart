@@ -275,9 +275,13 @@ class WatchlistController extends GetxController {
             .map((json) => WatchlistItemModel.fromJson(json))
             .toList();
 
-        // Add items to service
+        // Add items to service and sync starred status
         for (final item in data) {
           await _watchlistService.addToWatchlist(item);
+          // Sync starred status from API
+          if (item.isStarred && !isStarred(item.id)) {
+            await _watchlistService.toggleStar(item.id);
+          }
         }
       }
     } catch (e) {
@@ -318,9 +322,14 @@ class WatchlistController extends GetxController {
       Helpers.showSuccess('Added to watchlist');
       return true;
     } else {
-      // If already in list but not starred, star it
-      if (!isStarred(item.id)) {
-        await toggleStar(item.id);
+      // If already in list but not starred, find the existing one and star it
+      final existing = watchlistItems.firstWhereOrNull(
+        (i) => i.id == item.id || i.symbol == item.symbol
+      );
+      final idToStar = existing?.id ?? item.id;
+
+      if (!isStarred(idToStar)) {
+        await toggleStar(idToStar);
         Helpers.showSuccess('Added to watchlist');
         return true;
       }

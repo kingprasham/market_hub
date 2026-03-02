@@ -391,7 +391,7 @@ class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
     String? location,
   }) {
     final watchlistController = Get.find<WatchlistController>();
-    final isAdded = watchlistController.isInWatchlist(symbol);
+    final isAdded = watchlistController.isStarred(symbol);
     final isPositive = (change ?? 0) >= 0;
 
     return ListTile(
