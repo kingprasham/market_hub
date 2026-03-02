@@ -4,8 +4,6 @@ import '../../../../../core/constants/color_constants.dart';
 import '../../../../../core/constants/text_styles.dart';
 import '../../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../controller/settlement_controller.dart';
-import '../../../../../shared/widgets/common/metal_detail_dialog.dart';
-import 'package:intl/intl.dart';
 
 class SettlementPage extends StatelessWidget {
   const SettlementPage({super.key});
@@ -33,204 +31,159 @@ class SettlementPage extends StatelessWidget {
         return RefreshIndicator(
           onRefresh: controller.refreshData,
           color: ColorConstants.primaryBlue,
-          child: CustomScrollView(
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final item = controller.settlementData[index];
-                      return _buildSettlementCard(context, item);
-                    },
-                    childCount: controller.settlementData.length,
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 20),
-              ),
-            ],
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _buildSettlementHeader(),
+                const SizedBox(height: 12),
+                _buildSettlementTable(),
+              ],
+            ),
           ),
         );
       }),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildSettlementHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF00695C),
-            const Color(0xFF00897B),
-          ],
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      alignment: Alignment.center,
+      child: Text(
+        'SETTLEMENT',
+        style: TextStyle(
+          color: ColorConstants.textPrimary,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
         ),
       ),
-      child: Column(
+    );
+  }
+
+  Widget _buildSettlementTable() {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.red.shade400, width: 1),
+      ),
+      child: Table(
+        border: TableBorder.all(color: Colors.red.shade400, width: 1),
+        columnWidths: const {
+          0: FixedColumnWidth(80), // DATE
+          1: FlexColumnWidth(1.2), // METAL
+          2: FlexColumnWidth(1),   // CASH BID
+          3: FlexColumnWidth(1),   // CASH ASK
+          4: FlexColumnWidth(1),   // 3M BID
+          5: FlexColumnWidth(1),   // 3M ASK
+        },
         children: [
-          const Text(
-            'LME SETTLEMENT PRICES',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
-            ),
+          // Sub Headers
+          TableRow(
+            children: [
+              _buildHeaderCell('DATE'),
+              _buildHeaderCell('METAL'),
+              _buildHeaderCell('BID', parent: 'CASH'),
+              _buildHeaderCell('ASK', parent: 'CASH'),
+              _buildHeaderCell('BID', parent: '3M'),
+              _buildHeaderCell('ASK', parent: '3M'),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Official Cash & 3-Month Settlements',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
-              fontSize: 12,
-            ),
+          // Group Headers (CASH and 3M)
+          TableRow(
+            children: [
+              const SizedBox.shrink(),
+              const SizedBox.shrink(),
+              _buildGroupHeader('CASH'),
+              _buildGroupHeader('CASH'),
+              _buildGroupHeader('3M'),
+              _buildGroupHeader('3M'),
+            ],
           ),
+          ...controller.settlementData.map((item) => _buildDataRow(item)).toList(),
         ],
       ),
     );
   }
 
-  Widget _buildSettlementCard(BuildContext context, dynamic item) {
-    return InkWell(
-      onTap: () {
-        MetalDetailDialog.show(
-          context,
-          title: '${item.metal} Settlement',
-          lastPrice: 'Cash: \$${item.bidCash.toStringAsFixed(0)}/\$${item.askCash.toStringAsFixed(0)}',
-          high: '3M: \$${item.bid3M.toStringAsFixed(0)}',
-          low: '3M: \$${item.ask3M.toStringAsFixed(0)}',
-          change: 'Date: ${item.date}',
-          lastTrade: DateFormat('dd MMM hh:mma').format(DateTime.now()).toLowerCase(),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          border: Border.all(color: ColorConstants.borderColor.withOpacity(0.5)),
-        ),
-        child: Column(
-          children: [
-            // Card Header
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    item.metal,
-                    style: TextStyles.bodyMedium.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: ColorConstants.primaryBlue,
-                    ),
-                  ),
-                  Text(
-                    item.date,
-                    style: TextStyles.caption.copyWith(
-                      color: ColorConstants.textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  // Cash Section
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildPriceSectionHeader('CASH (USD)'),
-                        const SizedBox(height: 8),
-                        _buildPriceRow('Bid', item.bidCash),
-                        const SizedBox(height: 4),
-                        _buildPriceRow('Ask', item.askCash),
-                      ],
-                    ),
-                  ),
-                  
-                  Container(
-                    height: 60,
-                    width: 1,
-                    color: ColorConstants.borderColor.withOpacity(0.5),
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  
-                  // 3M Section
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildPriceSectionHeader('3-MONTH (USD)'),
-                        const SizedBox(height: 8),
-                        _buildPriceRow('Bid', item.bid3M),
-                        const SizedBox(height: 4),
-                        _buildPriceRow('Ask', item.ask3M),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+  // Note: Table headers in Flutter are tricky for nested. 
+  // We'll manually build the header rows.
+
+  // Let's refine the table structure to perfectly match the user image:
+  // Row 1: DATE | METAL | CASH (spanning BID/ASK) | 3M (spanning BID/ASK)
+  // Row 2: empty| empty | BID | ASK | BID | ASK
+
+  // Actually, simplest is to use custom widgets for headers.
+  
+  Widget _buildHeaderCell(String label, {String? parent}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: ColorConstants.textPrimary,
         ),
       ),
     );
   }
 
-  Widget _buildPriceSectionHeader(String title) {
-    return Text(
-      title,
-      style: TextStyles.caption.copyWith(
-        fontSize: 10,
-        fontWeight: FontWeight.bold,
-        color: ColorConstants.textSecondary,
-        letterSpacing: 0.5,
+  Widget _buildGroupHeader(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      alignment: Alignment.center,
+      color: Colors.transparent,
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: ColorConstants.textPrimary,
+        ),
       ),
     );
   }
 
-  Widget _buildPriceRow(String label, double value) {
-    final displayValue = value > 0 ? value.toStringAsFixed(0) : '-';
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  // To match the image exactly:
+  // The first row should have "DATE", "METAL", and then merged "CASH" and "3M"
+  // But Table doesn't support colSpan. We'll use a standard Table with layered headers.
+
+  TableRow _buildDataRow(dynamic item) {
+    return TableRow(
       children: [
-        Text(
-          label,
-          style: TextStyles.bodySmall.copyWith(
-            color: ColorConstants.textSecondary,
-          ),
-        ),
-        Text(
-          displayValue,
-          style: TextStyles.bodyMedium.copyWith(
-            fontWeight: FontWeight.w600,
-            color: value > 0 ? ColorConstants.textPrimary : Colors.grey,
-          ),
-        ),
+        _buildDataCell(item.date, fontSize: 10),
+        _buildDataCell(item.metal, isCentered: true, fontWeight: FontWeight.bold),
+        _buildDataCell(item.bidCash.toStringAsFixed(0), color: Colors.blue.shade800),
+        _buildDataCell(item.askCash.toStringAsFixed(0), color: Colors.blue.shade800),
+        _buildDataCell(item.bid3M.toStringAsFixed(0), color: Colors.blue.shade800),
+        _buildDataCell(item.ask3M.toStringAsFixed(0), color: Colors.blue.shade800),
       ],
+    );
+  }
+
+  Widget _buildDataCell(String value, {
+    bool isCentered = false, 
+    FontWeight fontWeight = FontWeight.normal,
+    Color? color,
+    double fontSize = 11,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+      alignment: Alignment.center,
+      child: Text(
+        value,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+          color: color ?? ColorConstants.textPrimary,
+        ),
+      ),
     );
   }
 }

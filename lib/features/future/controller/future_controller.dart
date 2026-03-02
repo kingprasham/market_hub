@@ -18,6 +18,13 @@ import '../pages/warehouse_stock/controller/warehouse_stock_controller.dart';
 
 class FutureController extends GetxController with GetSingleTickerProviderStateMixin {
   final selectedTabIndex = 0.obs;
+
+  void _handleArguments() {
+    final args = Get.arguments;
+    if (args is Map && args['sub_tab'] != null) {
+      selectedTabIndex.value = args['sub_tab'];
+    }
+  }
   final isLoading = true.obs;
   final isRefreshing = false.obs;
 
@@ -46,6 +53,7 @@ class FutureController extends GetxController with GetSingleTickerProviderStateM
   @override
   void onInit() {
     super.onInit();
+    _handleArguments();
     fetchAllData();
     _subscribeToRealTimeUpdates();
     _loadGoogleSheetsData();

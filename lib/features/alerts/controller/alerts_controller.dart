@@ -64,8 +64,13 @@ class AlertsController extends GetxController {
   }
 
   void _handleArguments() {
-    if (Get.arguments is Map && Get.arguments['tabIndex'] != null) {
-      selectedTabIndex.value = Get.arguments['tabIndex'];
+    final args = Get.arguments;
+    if (args is Map) {
+      if (args['tabIndex'] != null) {
+        selectedTabIndex.value = args['tabIndex'];
+      } else if (args['sub_tab'] != null) {
+        selectedTabIndex.value = args['sub_tab'];
+      }
     }
   }
 

@@ -383,12 +383,14 @@ class SearchPage extends GetView<SearchController> {
 
   Color _getCategoryColor(SearchCategory category) {
     switch (category) {
-      case SearchCategory.metals:
+      case SearchCategory.market:
         return ColorConstants.primaryOrange;
-      case SearchCategory.news:
+      case SearchCategory.metals:
         return ColorConstants.primaryBlue;
-      case SearchCategory.alerts:
+      case SearchCategory.news:
         return ColorConstants.infoColor;
+      case SearchCategory.features:
+        return ColorConstants.successColor;
     }
   }
 }

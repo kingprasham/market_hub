@@ -16,6 +16,13 @@ import '../../../data/models/market/non_ferrous_sheet_data.dart';
 
 class SpotPriceController extends GetxController {
   final selectedTabIndex = 0.obs;
+
+  void _handleArguments() {
+    final args = Get.arguments;
+    if (args is Map && args['sub_tab'] != null) {
+      selectedTabIndex.value = args['sub_tab'];
+    }
+  }
   final isLoading = true.obs;
   final isRefreshing = false.obs;
 
@@ -80,6 +87,7 @@ class SpotPriceController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _handleArguments();
     _initServices();
     fetchAllData();
     _subscribeToRealTimeUpdates();

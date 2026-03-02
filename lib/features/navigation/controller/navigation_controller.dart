@@ -6,8 +6,18 @@ import '../../../core/services/external_data_service.dart';
 import '../../../core/services/google_sheets_service.dart';
 
 class NavigationController extends GetxController {
-  final currentIndex = 0.obs;
-  final pageController = PageController();
+  late final RxInt currentIndex;
+  late final PageController pageController;
+
+  NavigationController() {
+    final args = Get.arguments;
+    int initialTab = 0;
+    if (args is Map && args['tab'] != null) {
+      initialTab = args['tab'];
+    }
+    currentIndex = initialTab.obs;
+    pageController = PageController(initialPage: initialTab);
+  }
 
   late WebSocketService _webSocketService;
 
