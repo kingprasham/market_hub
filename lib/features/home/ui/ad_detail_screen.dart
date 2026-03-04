@@ -10,8 +10,10 @@ class AdDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Retrieve the ad data passed as argument
-    final AdData ad = Get.arguments as AdData? ?? allAds.first;
+    final AdData? ad = Get.arguments as AdData?;
+    if (ad == null) {
+      return const Scaffold(body: Center(child: Text('Error: Ad not found')));
+    }
 
     return Scaffold(
       backgroundColor: ColorConstants.backgroundColor,
@@ -36,11 +38,22 @@ class AdDetailScreen extends StatelessWidget {
 
           // Image as first item in body (full width, no crop)
           SliverToBoxAdapter(
-            child: Image.asset(
-              ad.imagePath,
-              fit: BoxFit.fitWidth,
-              width: double.infinity,
-            ),
+            child: ad.imagePath.startsWith('http')
+                ? Image.network(
+                    ad.imagePath,
+                    fit: BoxFit.fitWidth,
+                    width: double.infinity,
+                    errorBuilder: (_, __, ___) => Image.asset(
+                      'assets/images/1.jpeg',
+                      fit: BoxFit.fitWidth,
+                      width: double.infinity,
+                    ),
+                  )
+                : Image.asset(
+                    ad.imagePath,
+                    fit: BoxFit.fitWidth,
+                    width: double.infinity,
+                  ),
           ),
 
           // Content

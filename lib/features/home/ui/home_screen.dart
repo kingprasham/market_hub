@@ -165,20 +165,24 @@ class HomeScreen extends GetView<HomeController> {
   }
 
   Widget _buildAdCarousel() {
-    return Column(
-      children: [
-        SizedBox(
-          height: 200,
-          child: PageView.builder(
-            itemCount: allAds.length,
-            controller: controller.adPageController,
-            onPageChanged: (index) {
-              controller.currentAdPage.value = index;
-            },
-            itemBuilder: (context, index) {
-              final ad = allAds[index];
-              return Container(
-                margin: EdgeInsets.only(right: 12, left: index == 0 ? 16 : 0),
+    return Obx(() {
+      final adsList = controller.dynamicAds;
+      if (adsList.isEmpty) return const SizedBox.shrink();
+
+      return Column(
+        children: [
+          SizedBox(
+            height: 200,
+            child: PageView.builder(
+              itemCount: adsList.length,
+              controller: controller.adPageController,
+              onPageChanged: (index) {
+                controller.currentAdPage.value = index;
+              },
+              itemBuilder: (context, index) {
+                final ad = adsList[index];
+                return Container(
+                  margin: EdgeInsets.only(right: 12, left: index == 0 ? 16 : 0),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
@@ -195,10 +199,19 @@ class HomeScreen extends GetView<HomeController> {
                     fit: StackFit.expand,
                     children: [
                       // Background image — each ad uses its own image
-                      Image.asset(
-                        ad.imagePath,
-                        fit: BoxFit.cover,
-                      ),
+                      ad.imagePath.startsWith('http')
+                          ? Image.network(
+                              ad.imagePath,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Image.asset(
+                                'assets/images/1.jpeg',
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : Image.asset(
+                              ad.imagePath,
+                              fit: BoxFit.cover,
+                            ),
 
                       // Dark gradient overlay for readability
                       Container(
@@ -294,7 +307,7 @@ class HomeScreen extends GetView<HomeController> {
         // Dot indicators
         Obx(() => Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(allAds.length, (index) {
+          children: List.generate(adsList.length, (index) {
             final isActive = controller.currentAdPage.value == index;
             return AnimatedContainer(
               duration: const Duration(milliseconds: 300),
@@ -312,7 +325,8 @@ class HomeScreen extends GetView<HomeController> {
         )),
       ],
     );
-  }
+  });
+}
 
   // ─── Live Prices Section (shows only changed prices) ──────────────────────
 

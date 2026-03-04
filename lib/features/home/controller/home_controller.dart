@@ -16,6 +16,8 @@ import '../../../data/models/watchlist/watchlist_item_model.dart';
 import '../../../data/models/market/price_change_model.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../app/routes/app_routes.dart';
+import '../../../core/network/api_client.dart';
+import '../data/ad_data.dart';
 
 class HomeController extends GetxController {
   final isLoading = true.obs;
@@ -35,6 +37,9 @@ class HomeController extends GetxController {
   
   // Home Updates for homepage
   final homeUpdates = <UpdateModel>[].obs;
+
+  // Dynamic Ads for homepage
+  final dynamicAds = <AdData>[].obs;
 
   // SBI TT Rates
   final sbiTTRates = Rxn<SbiTTRates>();
@@ -74,7 +79,7 @@ class HomeController extends GetxController {
   // Ad carousel autoscroll
   late final PageController adPageController;
   Timer? _adAutoScrollTimer;
-  static const int adCount = 7;
+  int get adCount => dynamicAds.length;
   final currentAdPage = 0.obs;
 
   @override
@@ -383,6 +388,7 @@ class HomeController extends GetxController {
       _loadExternalData(),
       _loadGoogleSheetsData(),
       _loadHomeUpdates(),
+      _loadDynamicAds(),
     ]);
 
     isLoading.value = false;
@@ -431,6 +437,22 @@ class HomeController extends GetxController {
       _updateIndicesFromSheets();
     } catch (e) {
       debugPrint('Error loading Google Sheets data: $e');
+    }
+  }
+
+  Future<void> _loadDynamicAds() async {
+    try {
+      final response = await ApiClient().get(ApiConstants.adminAds);
+      if (response.data != null && response.data['success'] == true) {
+        final data = response.data['data'] as List;
+        final List<AdData> parsedAds = data.map((item) => AdData.fromJson(item)).toList();
+        dynamicAds.assignAll(parsedAds);
+        debugPrint('Successfully loaded ${dynamicAds.length} dynamic ads.');
+      } else {
+        debugPrint('Failed to load dynamic ads: success flag false');
+      }
+    } catch (e) {
+      debugPrint('Exception in _loadDynamicAds: $e');
     }
   }
 
@@ -675,6 +697,7 @@ class HomeController extends GetxController {
       debugPrint('Auto-refreshing content...');
       _loadGoogleSheetsData();
       _loadHomeUpdates();
+      _loadDynamicAds();
     });
   }
 
@@ -685,6 +708,7 @@ class HomeController extends GetxController {
       _loadExternalData(),
       _loadGoogleSheetsData(),
       _loadHomeUpdates(),
+      _loadDynamicAds(),
     ]);
 
     _updateStarredItems();

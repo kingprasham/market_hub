@@ -67,7 +67,12 @@ $flash = get_flash();
             <li class="menu-header">Content Management</li>
             <li>
                 <a href="home_updates.php" class="<?= is_active_page('home_updates') ?>">
-                    <i class="bi bi-house"></i> Home Updates
+                    <i class="bi bi-house-up"></i> Home Updates
+                </a>
+            </li>
+            <li>
+                <a href="ads.php" class="<?= is_active_page('ads') ?>">
+                    <i class="bi bi-badge-ad"></i> Manage Ads
                 </a>
             </li>
             <li>

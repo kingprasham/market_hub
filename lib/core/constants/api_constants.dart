@@ -21,6 +21,7 @@ class ApiConstants {
   static const String adminHindiNews = 'news-hindi.php';
   static const String adminCirculars = 'circulars.php';
   static const String adminLatestUpdates = 'latest-updates.php';
+  static const String adminAds = 'https://mehrgrewal.com/markethub/api/get_ads.php';
   static const String adminSettings = 'settings.php';
   static const String adminFeedback = 'feedback.php';
   static const String adminForgotPin = 'forgot-pin.php';
