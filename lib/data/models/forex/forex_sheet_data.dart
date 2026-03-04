@@ -11,18 +11,26 @@ class ForexSheetData {
     required this.updatedAt,
   });
 
+  /// Month name lookup for manual parsing (case-insensitive)
+  static final _monthMap = <String, int>{
+    'jan': 1, 'january': 1,
+    'feb': 2, 'february': 2,
+    'mar': 3, 'march': 3,
+    'apr': 4, 'april': 4,
+    'may': 5,
+    'jun': 6, 'june': 6,
+    'jul': 7, 'july': 7,
+    'aug': 8, 'august': 8,
+    'sep': 9, 'sept': 9, 'september': 9,
+    'oct': 10, 'october': 10,
+    'nov': 11, 'november': 11,
+    'dec': 12, 'december': 12,
+  };
+
   factory ForexSheetData.fromCsv(List<List<dynamic>> csvData) {
     final sbiTableRows = <SbiTableRow>[];
     final rbiTableRows = <RbiTableRow>[];
-    
-    // Support multiple date formats
-    final formats = [
-      DateFormat('d-MMM-yyyy'),
-      DateFormat('dd-MMM-yyyy'),
-      DateFormat('yyyy-MM-dd'),
-    ];
 
-    // Header index determination (optional, but let's stick to fixed indices based on user request)
     // SBI: A(0)=Date, B(1)=USD, C(2)=EUR, D(3)=GBP, E(4)=JPY
     // RBI: G(6)=Date, H(7)=USD, I(8)=GBP, J(9)=EUR, K(10)=JPY
 
@@ -30,12 +38,15 @@ class ForexSheetData {
       final row = csvData[i];
       if (row.isEmpty) continue;
 
+      // Skip garbage rows (ads / footer text from the sheet)
+      final firstCell = row[0].toString();
+      if (_isGarbageRow(firstCell)) continue;
+
       // Parse SBI
       try {
-        if (row.length > 4 && row[0].toString().isNotEmpty) {
-          final dateStr = row[0].toString();
-          final date = _parseDate(dateStr, formats);
-          
+        if (row.length > 4 && firstCell.isNotEmpty) {
+          final date = _parseDate(firstCell);
+
           if (date != null) {
             final usd = _parseRate(row, 1);
             final eur = _parseRate(row, 2);
@@ -53,36 +64,34 @@ class ForexSheetData {
             }
           }
         }
-      } catch (e) {
-        // Skip
-      }
+      } catch (_) {}
 
       // Parse RBI
       try {
-        if (row.length > 10 && row[6].toString().isNotEmpty) {
-          final dateStr = row[6].toString();
-          final date = _parseDate(dateStr, formats);
-          
-          if (date != null) {
-            final usd = _parseRate(row, 7);
-            final gbp = _parseRate(row, 8);
-            final eur = _parseRate(row, 9);
-            final jpy = _parseRate(row, 10);
+        if (row.length > 10) {
+          final rbiDateStr = row[6].toString();
+          if (rbiDateStr.isNotEmpty && !_isGarbageRow(rbiDateStr)) {
+            final date = _parseDate(rbiDateStr);
 
-            if (usd != null && gbp != null && eur != null && jpy != null) {
-              rbiTableRows.add(RbiTableRow(
-                date: date,
-                usd: usd,
-                gbp: gbp,
-                eur: eur,
-                jpy: jpy,
-              ));
+            if (date != null) {
+              final usd = _parseRate(row, 7);
+              final gbp = _parseRate(row, 8);
+              final eur = _parseRate(row, 9);
+              final jpy = _parseRate(row, 10);
+
+              if (usd != null && gbp != null && eur != null && jpy != null) {
+                rbiTableRows.add(RbiTableRow(
+                  date: date,
+                  usd: usd,
+                  gbp: gbp,
+                  eur: eur,
+                  jpy: jpy,
+                ));
+              }
             }
           }
         }
-      } catch (e) {
-        // Skip
-      }
+      } catch (_) {}
     }
 
     return ForexSheetData(
@@ -92,27 +101,68 @@ class ForexSheetData {
     );
   }
 
+  /// Check if a cell value is garbage (ads / footer / header repetition)
+  static bool _isGarbageRow(String val) {
+    if (val.isEmpty) return true;
+    final lower = val.toLowerCase();
+    if (lower.contains('market hub')) return true;
+    if (lower.contains('matod')) return true;
+    if (lower.contains('e-mail')) return true;
+    if (lower.contains('mobile:')) return true;
+    if (lower.contains('website:')) return true;
+    if (lower.contains('sponsored')) return true;
+    if (lower.contains('premium quality')) return true;
+    if (lower.startsWith('*')) return true;
+    if (lower.startsWith('sbi tt sell date')) return true;
+    if (lower.startsWith('date')) return true;
+    return false;
+  }
+
   static double? _parseRate(List<dynamic> row, int index) {
     if (index >= row.length) return null;
-    final val = row[index]?.toString().replaceAll(',', '').trim();
-    if (val == null || val.isEmpty || val == '-' || val.toLowerCase() == '#ref!') return null;
+    var val = row[index]?.toString().trim() ?? '';
+    // Strip embedded junk like "*MARKET HUB*85.42"
+    if (val.contains('*')) {
+      final match = RegExp(r'[\d.]+').firstMatch(val);
+      if (match != null) {
+        val = match.group(0)!;
+      } else {
+        return null;
+      }
+    }
+    val = val.replaceAll(',', '');
+    if (val.isEmpty || val == '-' || val.toLowerCase() == '#ref!') return null;
     return double.tryParse(val);
   }
 
-  static DateTime? _parseDate(String dateStr, List<DateFormat> formats) {
+  /// Robust date parser that handles:
+  /// - "d-MMM-yyyy"      e.g. "31-May-2025"
+  /// - "dd-MMM-yyyy"     e.g. "01-Jan-2024"
+  /// - "d-MMMM-yyyy"     e.g. "4-March-2026"
+  /// - "dd-MMMM-yyyy"    e.g. "04-March-2026"
+  /// - "yyyy-MM-dd"      e.g. "2025-05-31"
+  /// - ISO 8601
+  static DateTime? _parseDate(String dateStr) {
     if (dateStr.isEmpty) return null;
-    
-    // Clean string
     var clean = dateStr.trim();
-    if (clean.startsWith('DATE:')) return null; // Skip header row if repeated
-    
-    for (final fmt in formats) {
-      try {
-        return fmt.parse(clean);
-      } catch (e) {
-        continue;
+
+    // Skip header labels
+    final lower = clean.toLowerCase();
+    if (lower.startsWith('date') || lower.startsWith('sbi')) return null;
+
+    // Try manual parsing: d-Month-yyyy (handles both "Mar" and "March")
+    final parts = clean.split('-');
+    if (parts.length == 3) {
+      final day = int.tryParse(parts[0].trim());
+      final monthStr = parts[1].trim().toLowerCase();
+      final year = int.tryParse(parts[2].trim());
+
+      if (day != null && year != null && _monthMap.containsKey(monthStr)) {
+        return DateTime(year, _monthMap[monthStr]!, day);
       }
     }
+
+    // Fallback: ISO or other standard formats
     return DateTime.tryParse(clean);
   }
 }
