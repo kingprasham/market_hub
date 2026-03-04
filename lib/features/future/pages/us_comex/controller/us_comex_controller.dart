@@ -2,7 +2,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../../../core/services/watchlist_service.dart';
-import '../../../../../core/services/scraper/fx678_scraper_service.dart';
+import '../../../../../core/services/scraper/jijinhao_scraper_service.dart';
 import '../../../../../core/services/market_session_service.dart';
 import '../../../../../data/models/watchlist/watchlist_item_model.dart';
 import '../../../../../core/utils/helpers.dart';
@@ -19,25 +19,11 @@ class USComexController extends GetxController {
   final filterOptions = <String>[];
 
   static const _fixedList = [
-    ('Copper',        'HG', 'Base Metals'),
-    ('Gold',          'GC', 'Precious Metals'),
-    ('Silver',        'SI', 'Precious Metals'),
-    ('WTI Crude Oil', 'CL', 'Energy'),
-    ('Brent Crude Oil','OIL','Energy'),
-    ('Natural Gas',   'NG', 'Energy'),
-    ('Platinum',      'PL', 'Precious Metals'),
-    ('Palladium',     'PA', 'Precious Metals'),
-  ];
-
-  static const _matchKeywords = [
-    ['Copper'],
-    ['Gold'],
-    ['Silver'],
-    ['WTI', 'Crude Oil'],
-    ['Brent'],
-    ['Natural Gas'],
-    ['Platinum'],
-    ['Palladium'],
+    ('COMEX Silver', 'SI', 'Precious Metals'),
+    ('US fuel', 'NEHOA0', 'Energy'),
+    ('US crude oil', 'NECLA0', 'Energy'),
+    ('COMEX Gold', 'GC', 'Precious Metals'),
+    ('Meijing Copper', 'CMZCUA.FUTURES', 'Base Metals'),
   ];
 
   WatchlistService? _watchlistService;
@@ -100,13 +86,13 @@ class USComexController extends GetxController {
       ));
 
       try {
-        final scraper = Get.put(FX678ScraperService());
+        final scraper = Get.put(JijinhaoScraperService());
         final scraped = await scraper.fetchCOMEX();
         if (scraped.isNotEmpty) {
           for (int i = 0; i < base.length; i++) {
-            final keywords = _matchKeywords[i];
             final match = scraped.firstWhereOrNull((s) =>
-              keywords.any((kw) => s.name.toUpperCase().contains(kw.toUpperCase())),
+              s.symbol.toUpperCase() == _fixedList[i].$2.toUpperCase() ||
+              s.name.toUpperCase().contains(_fixedList[i].$1.toUpperCase())
             );
             if (match != null) {
               // Custom change calculation based on session time
@@ -144,7 +130,7 @@ class USComexController extends GetxController {
               );
             }
           }
-          dataSource.value = 'COMEX/NYMEX (Live)';
+          dataSource.value = 'quheqihuo.com (Live)';
         } else {
           dataSource.value = 'Scraper Unavailable';
         }

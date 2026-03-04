@@ -321,9 +321,9 @@ class USComexPage extends StatelessWidget {
   List<Color> _getMetalGradient(String symbol) {
     if (symbol.contains('GC')) return [const Color(0xFFFFD700), const Color(0xFFDAA520)];
     if (symbol.contains('SI')) return [const Color(0xFFC0C0C0), const Color(0xFFA8A8A8)];
-    if (symbol.contains('HG')) return [const Color(0xFFB87333), const Color(0xFF8B5A2B)];
-    if (symbol.contains('PL')) return [const Color(0xFFE5E4E2), const Color(0xFFBCBCBC)];
-    if (symbol.contains('PA')) return [const Color(0xFFCCC5B9), const Color(0xFFA8A196)];
+    if (symbol.contains('CMZ')) return [const Color(0xFFB87333), const Color(0xFF8B5A2B)];
+    if (symbol.contains('NEHO')) return [const Color(0xFFD2691E), const Color(0xFFA0522D)];
+    if (symbol.contains('NECL')) return [const Color(0xFF4B4B4B), const Color(0xFF2C2C2C)];
     return [const Color(0xFF0A3161), const Color(0xFF0A3161).withOpacity(0.7)];
   }
 
