@@ -360,21 +360,60 @@ class GoogleSheetsService extends GetxService {
 
   /// Parse CSV data to SheetData
   SheetData _parseCsvToSheetData(String sheetName, String csvData) {
-    final lines = csvData.split('\n');
-    if (lines.isEmpty) {
+    if (csvData.isEmpty) {
       return SheetData(name: sheetName, headers: [], rows: []);
     }
 
-    // Parse headers from first line
-    final headers = _parseCsvLine(lines[0]);
-
-    // Parse data rows
     final rows = <List<String>>[];
-    for (int i = 1; i < lines.length; i++) {
-      if (lines[i].trim().isNotEmpty) {
-        rows.add(_parseCsvLine(lines[i]));
+    var currentRow = <String>[];
+    var currentCell = StringBuffer();
+    var inQuotes = false;
+
+    // Normalize line endings to \n
+    final data = csvData.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+
+    for (int i = 0; i < data.length; i++) {
+      final char = data[i];
+
+      if (char == '"') {
+        if (inQuotes && i + 1 < data.length && data[i + 1] == '"') {
+          // Double quote inside quotes means a literal quote
+          currentCell.write('"');
+          i++; // Skip next quote
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char == ',' && !inQuotes) {
+        currentRow.add(currentCell.toString().trim());
+        currentCell.clear();
+      } else if (char == '\n' && !inQuotes) {
+        currentRow.add(currentCell.toString().trim());
+        if (currentRow.any((cell) => cell.isNotEmpty)) {
+          rows.add(List.from(currentRow));
+        }
+        currentRow.clear();
+        currentCell.clear();
+      } else {
+        currentCell.write(char);
       }
     }
+
+    // Add final row if not empty
+    if (currentRow.isNotEmpty || currentCell.isNotEmpty) {
+      if (currentCell.isNotEmpty) {
+        currentRow.add(currentCell.toString().trim());
+      }
+      if (currentRow.any((cell) => cell.isNotEmpty)) {
+        rows.add(currentRow);
+      }
+    }
+
+    if (rows.isEmpty) {
+      return SheetData(name: sheetName, headers: [], rows: []);
+    }
+
+    // First row is headers
+    final headers = rows.removeAt(0);
 
     return SheetData(
       name: sheetName,
@@ -382,34 +421,6 @@ class GoogleSheetsService extends GetxService {
       rows: rows,
       lastUpdated: DateTime.now(),
     );
-  }
-
-  /// Parse a single CSV line, handling quoted values
-  List<String> _parseCsvLine(String line) {
-    final result = <String>[];
-    var current = '';
-    var inQuotes = false;
-
-    for (int i = 0; i < line.length; i++) {
-      final char = line[i];
-
-      if (char == '"') {
-        if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char == ',' && !inQuotes) {
-        result.add(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-
-    result.add(current.trim());
-    return result;
   }
 
   /// Parse Google Visualization API JSON response
@@ -1805,57 +1816,68 @@ class GoogleSheetsService extends GetxService {
   }
 
   void _parseSettlementData(SheetData sheet) {
-    // Parse right side (Cols O-T, Indices 14-19)
+    // Parse right side (Cols O-S, Indices 14-18)
     final data = <SettlementModel>[];
 
-    // Find header row for Date/Metal
-    // Looking for "BID" and "ASK" in columns Q/R (16/17) to find start
-    int dataStartRow = -1;
-    
-    // Scan for the row that has 'BID' in column 16 (Q)
     for (int i = 0; i < sheet.rows.length; i++) {
-      if (sheet.rows[i].length > 16 && sheet.rows[i][16].trim() == 'BID') {
-         dataStartRow = i + 1; // Data starts after BID header row
-         break;
-      }
-    }
-    
-    // Fallback: look for a date format in column 14 (O) if header search fails
-    if (dataStartRow == -1) {
-        for (int i = 0; i < sheet.rows.length; i++) {
-            if (sheet.rows[i].length > 14 && sheet.rows[i][14].contains('.')) {
-                dataStartRow = i; 
-                break;
-            }
-        }
-    }
-    
-    if (dataStartRow == -1) return;
-
-    for (int i = dataStartRow; i < sheet.rows.length; i++) {
       final row = sheet.rows[i];
-      if (row.length < 20) continue; // Need up to T (19)
+      if (row.length < 15) continue; // Need at least up to O (index 14) for Metal
 
-      final date = row[14].trim(); // Col O
-      final metal = row[15].trim(); // Col P
+      final metal = row[14].trim();
+      if (metal.isEmpty) continue;
       
-      if (date.isEmpty || metal.isEmpty) continue;
-      // Skip headers if repeated or noise
-      if (date == 'DATE' || metal == 'METAL' || date.contains('SETTELMENT')) continue;
+      // Skip obvious headers or noise
+      final metalUpper = metal.toUpperCase();
+      if (metalUpper == 'SYMBOL' || metalUpper == 'METAL' || metalUpper == 'DATE' || 
+          metalUpper.contains('SETTELMENT') || metalUpper.contains('MARKET HUB')) {
+        continue;
+      }
+
+      // Check if it looks like a price in Col P
+      final bidCash = row.length > 15 ? row[15].trim() : '';
+      if (bidCash.isEmpty || bidCash.toUpperCase() == 'BID' || bidCash.toUpperCase() == 'CASH') {
+        continue;
+      }
 
       try {
         data.add(SettlementModel(
-          date: date,
+          date: '', 
           metal: metal,
-          bidCash: _parseSinglePrice(row[16]) ?? 0.0, // Q
-          askCash: _parseSinglePrice(row[17]) ?? 0.0, // R
-          bid3M: _parseSinglePrice(row[18]) ?? 0.0, // S
-          ask3M: _parseSinglePrice(row[19]) ?? 0.0, // T
+          bidCash: _parseSinglePrice(row[15]) ?? 0.0, // P
+          askCash: row.length > 16 ? _parseSinglePrice(row[16]) ?? 0.0 : 0.0, // Q
+          bid3M: row.length > 17 ? _parseSinglePrice(row[17]) ?? 0.0 : 0.0, // R
+          ask3M: row.length > 18 ? _parseSinglePrice(row[18]) ?? 0.0 : 0.0, // S
         ));
       } catch (e) {
          debugPrint('Error parsing Settlement row $i: $e');
       }
     }
+
+    // Sort according to user requested sequence
+    final order = {
+      'COPPER': 1,
+      'TIN': 2,
+      'LEAD': 3,
+      'ZINC': 4,
+      'ALUMINIUM': 5,
+      'NICKEL': 6,
+      'AL. ALLOY': 7,
+      'NASAAC': 8,
+      'COBALT': 9,
+    };
+
+    data.sort((a, b) {
+      final aName = a.metal.toUpperCase().replaceAll(RegExp(r'\s+'), ' ');
+      final bName = b.metal.toUpperCase().replaceAll(RegExp(r'\s+'), ' ');
+      
+      final aOrder = order[aName] ?? 99;
+      final bOrder = order[bName] ?? 99;
+      
+      if (aOrder != bOrder) {
+        return aOrder.compareTo(bOrder);
+      }
+      return aName.compareTo(bName);
+    });
 
     settlementData.assignAll(data);
   }

@@ -20,6 +20,8 @@ void main() async {
 
     test('Calculation with Scraper Fallback', () {
       final results = service.calculateChange(
+        0.0,
+        0.0,
         MarketType.lme, 
         'CU', 
         9500.0, 
@@ -35,6 +37,8 @@ void main() async {
       await LocalStorage.cacheData('market_ref_price_lme_CU', 9000.0);
 
       final results = service.calculateChange(
+        0.0,
+        0.0,
         MarketType.lme, 
         'CU', 
         9500.0, 
