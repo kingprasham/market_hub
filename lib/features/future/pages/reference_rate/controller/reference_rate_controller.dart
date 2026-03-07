@@ -95,34 +95,81 @@ class ReferenceRateController extends GetxController {
       String source = '';
       final now = DateTime.now();
       
-      // Fetch SBI TT Rates
       // Fetch Google Sheets Data (New Priority)
       if (_externalDataService != null) {
         final sheetData = await _externalDataService!.fetchForexFromSheet();
         
         if (sheetData != null && (sheetData.sbiRows.isNotEmpty || sheetData.rbiRows.isNotEmpty)) {
-          sbiTableRows.value = sheetData.sbiRows;
-          rbiTableRows.value = sheetData.rbiRows;
+          sbiTableRows.assignAll(sheetData.sbiRows);
+          rbiTableRows.assignAll(sheetData.rbiRows);
           
-          // Populate legacy list for compatibility or summary
+          final List<ReferenceRate> rates = [];
+          
+          // Populate from latest SBI data (usually last in list if chronological)
           if (sheetData.sbiRows.isNotEmpty) {
-            final latestCtx = sheetData.sbiRows.first; // Assuming sorted descending or first is latest
-            // Actually csv parsing goes 2->end. If date is ascending, last is latest.
-            // Let's sort them to be safe or check csv order.
-            // CSV is usually chronological. Let's assume last is latest or sort.
+            // Sort by date descending to get latest first
+            final sortedSbi = List<SbiTableRow>.from(sheetData.sbiRows)..sort((a, b) => b.date.compareTo(a.date));
+            final latest = sortedSbi.first;
             
-            // For now, let's just use the table rows in the UI.
+            // Comparison data for change calculation (if available)
+            SbiTableRow? prev = sortedSbi.length > 1 ? sortedSbi[1] : null;
+
+            void addSbi(String name, double val, double? prevVal) {
+              final change = prevVal != null ? val - prevVal : 0.0;
+              final percent = prevVal != null && prevVal != 0 ? (change / prevVal) * 100 : 0.0;
+              rates.add(ReferenceRate(
+                id: 'ref_sbi_${name.toLowerCase()}',
+                name: 'SBI TT Buy $name',
+                source: 'SBI',
+                type: 'SBI TT Rates',
+                rate: val,
+                previousRate: prevVal ?? val,
+                change: change,
+                changePercent: percent,
+                lastUpdated: latest.date,
+              ));
+            }
+
+            addSbi('USD', latest.usd, prev?.usd);
+            addSbi('EUR', latest.eur, prev?.eur);
+            addSbi('GBP', latest.gbp, prev?.gbp);
+            addSbi('JPY', latest.jpy, prev?.jpy);
           }
 
+          // Populate from latest RBI data
+          if (sheetData.rbiRows.isNotEmpty) {
+            final sortedRbi = List<RbiTableRow>.from(sheetData.rbiRows)..sort((a, b) => b.date.compareTo(a.date));
+            final latest = sortedRbi.first;
+            RbiTableRow? prev = sortedRbi.length > 1 ? sortedRbi[1] : null;
+
+            void addRbi(String name, double val, double? prevVal) {
+              final change = prevVal != null ? val - prevVal : 0.0;
+              final percent = prevVal != null && prevVal != 0 ? (change / prevVal) * 100 : 0.0;
+              rates.add(ReferenceRate(
+                id: 'ref_rbi_${name.toLowerCase()}',
+                name: 'RBI $name/INR',
+                source: 'RBI',
+                type: 'RBI Reference',
+                rate: val,
+                previousRate: prevVal ?? val,
+                change: change,
+                changePercent: percent,
+                lastUpdated: latest.date,
+              ));
+            }
+
+            addRbi('USD', latest.usd, prev?.usd);
+            addRbi('GBP', latest.gbp, prev?.gbp);
+            addRbi('EUR', latest.eur, prev?.eur);
+            addRbi('JPY', latest.jpy, prev?.jpy);
+          }
+
+          referenceRates.assignAll(rates);
           source = 'Google Sheets (Sync)';
-        } else {
-          // Fallback
-          // ... (keep existing fallback logic for now if needed, or clear)
         }
       }
       
-      if (sbiTableRows.isNotEmpty || rbiTableRows.isNotEmpty || allRates.isNotEmpty) {
-        referenceRates.value = allRates;
+      if (referenceRates.isNotEmpty) {
         dataSource.value = source.isEmpty ? 'Live Data' : source;
         hasError.value = false;
         errorMessage.value = '';
@@ -141,6 +188,21 @@ class ReferenceRateController extends GetxController {
       dataSource.value = 'Error';
     } finally {
       isLoading.value = false;
+      _syncToReferenceWatchlist();
+    }
+  }
+
+  void _syncToReferenceWatchlist() {
+    if (_watchlistService == null) return;
+
+    // Sync from referenceRates list (which contains the latest values)
+    for (final rate in referenceRates) {
+      _watchlistService!.updatePriceById(
+        id: rate.id,
+        price: rate.rate,
+        change: rate.change,
+        changePercent: rate.changePercent,
+      );
     }
   }
 

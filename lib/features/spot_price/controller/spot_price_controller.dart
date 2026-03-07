@@ -476,6 +476,73 @@ class SpotPriceController extends GetxController {
     } finally {
       lastUpdated.value = DateTime.now();
       isLoading.value = false;
+      
+      // Sync all spot data to Watchlist
+      _syncAllToWatchlist();
+    }
+  }
+
+  void _syncAllToWatchlist() {
+    if (_watchlistService == null) return;
+
+    // 1. Sync Base Metal Prices
+    for (final p in baseMetalPrices) {
+      _watchlistService!.updatePriceById(
+        id: p.id,
+        price: p.price,
+        change: p.change,
+        changePercent: p.changePercent,
+      );
+    }
+
+    // 2. Sync BME Prices
+    for (final p in bmePrices) {
+      _watchlistService!.updatePriceById(
+        id: p.id,
+        price: p.price,
+        change: p.change,
+        changePercent: p.changePercent,
+      );
+    }
+
+    // 3. Sync Non-Ferrous Prices
+    final nfData = nonFerrousData.value;
+    if (nfData != null) {
+      for (final city in nfData.cities) {
+        for (final section in city.sections) {
+          for (final item in section.items) {
+            if (item.isSubHeader) continue;
+            final id = 'spot_nf_${city.cityName.toLowerCase()}_${section.sectionName.toLowerCase()}_${item.name.toLowerCase()}';
+            _watchlistService!.updatePriceById(
+              id: id,
+              price: item.price1,
+              // Change/Percent might need specific logic if not directly in item
+            );
+          }
+        }
+      }
+    }
+
+    // 4. Sync Ferrous Prices
+    for (final category in ferrousPrices) {
+      final id = 'spot_ferrous_${category.category.toLowerCase()}_${category.city.toLowerCase()}';
+      _watchlistService!.updatePriceById(
+        id: id,
+        price: category.price,
+      );
+    }
+
+    // 5. Sync Minor Prices
+    for (final minor in minorPrices) {
+      final id = 'spot_minor_${minor.category.toLowerCase()}_${minor.item.toLowerCase()}';
+      // Minor price is String, needs parsing or WatchlistService update
+      final price = double.tryParse(minor.price.replaceAll(RegExp(r'[^0-9.]'), ''));
+      if (price != null) {
+        _watchlistService!.updatePriceById(
+          id: id,
+          price: price,
+        );
+      }
     }
   }
 

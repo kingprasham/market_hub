@@ -9,6 +9,10 @@ import '../../../core/utils/helpers.dart';
 import '../../../data/models/watchlist/watchlist_item_model.dart';
 import '../../future/controller/future_controller.dart';
 import '../../spot_price/controller/spot_price_controller.dart';
+import '../../future/pages/london_lme/controller/london_lme_controller.dart';
+import '../../future/pages/china_shfe/controller/china_shfe_controller.dart';
+import '../../future/pages/us_comex/controller/us_comex_controller.dart';
+import '../../future/pages/fx/controller/fx_controller.dart';
 
 class WatchlistController extends GetxController {
   late WatchlistService _watchlistService;
@@ -43,19 +47,13 @@ class WatchlistController extends GetxController {
     ever(_watchlistService.watchlistItems, (_) => watchlistUpdateTrigger.value++);
     ever(_watchlistService.starredItemIds, (_) => watchlistUpdateTrigger.value++);
     await fetchWatchlist();
-    _startAutoRefresh();
+    
+    // Initial sync with controllers
+    _syncWithMainControllers();
   }
 
-  /// Start auto-refresh timer (15 seconds) to sync with other controllers
-  void _startAutoRefresh() {
-    Timer.periodic(const Duration(seconds: 15), (timer) {
-      if (!isLoading.value && !isRefreshing.value) {
-        _syncWithMainControllers();
-      }
-    });
-  }
-
-  /// Sync watchlist items with latest data from Future and Spot controllers
+  /// One-time sync with latest data from existing active controllers
+  /// Real-time updates now pushed from controllers directly for better performance
   void _syncWithMainControllers() {
     try {
       final updatedItems = <WatchlistItemModel>[];
@@ -81,16 +79,69 @@ class WatchlistController extends GetxController {
   }
 
   void _syncFutures(FutureController controller, List<WatchlistItemModel> updated) {
-    // Controller is actually FutureController - using dynamic to avoid strict import if needed but I'll use imports
     for (final item in watchlistItems) {
-      if (!item.isFuture) continue;
+      if (!item.isFuture && !item.isFx) continue;
       
-      // Look for symbol in LME, SHFE, COMEX, FX
+      final type = (item.type ?? item.itemType).toUpperCase();
+      
+      if (type == 'LME' || type == 'LONDON') {
+        if (Get.isRegistered<LondonLMEController>()) {
+          final lme = Get.find<LondonLMEController>();
+          final found = lme.metals.firstWhereOrNull((m) => m.symbol == item.symbol || m.id == item.id);
+          if (found != null && found.lastPrice != null) {
+            updated.add(item.copyWith(
+              price: found.lastPrice,
+              change: found.change,
+              changePercent: found.changePercent,
+            ));
+          }
+          continue;
+        }
+      } else if (type == 'SHFE' || type == 'CHINA') {
+        if (Get.isRegistered<ChinaSHFEController>()) {
+          final shfe = Get.find<ChinaSHFEController>();
+          final found = shfe.metals.firstWhereOrNull((m) => m.symbol == item.symbol || m.id == item.id);
+          if (found != null && found.lastPrice != null) {
+            updated.add(item.copyWith(
+              price: found.lastPrice,
+              change: found.change,
+              changePercent: found.changePercent,
+            ));
+          }
+          continue;
+        }
+      } else if (type == 'COMEX') {
+        if (Get.isRegistered<USComexController>()) {
+          final comex = Get.find<USComexController>();
+          final found = comex.metals.firstWhereOrNull((m) => m.symbol == item.symbol || m.id == item.id);
+          if (found != null && found.lastPrice != null) {
+            updated.add(item.copyWith(
+              price: found.lastPrice,
+              change: found.change,
+              changePercent: found.changePercent,
+            ));
+          }
+          continue;
+        }
+      } else if (type == 'FX') {
+        if (Get.isRegistered<FxController>()) {
+          final fx = Get.find<FxController>();
+          final found = fx.currencyPairs.firstWhereOrNull((p) => p.pair == item.symbol || p.id == item.id);
+          if (found != null && found.rate != null) {
+            updated.add(item.copyWith(
+              price: found.rate,
+              change: found.change,
+              changePercent: found.changePercent,
+            ));
+          }
+          continue;
+        }
+      }
+
+      // Fallback to legacy FutureController if sub-controllers not available
       dynamic found;
-      
-      // Search LME
       found = controller.lmeData.firstWhereOrNull((d) => d.symbol == item.symbol);
-      if (found != null) {
+      if (found != null && found.price > 0) {
         updated.add(item.copyWith(
           price: found.price,
           change: found.change,
@@ -99,9 +150,8 @@ class WatchlistController extends GetxController {
         continue;
       }
       
-      // Search SHFE
       found = controller.shfeData.firstWhereOrNull((d) => d.symbol == item.symbol);
-      if (found != null) {
+      if (found != null && found.price > 0) {
         updated.add(item.copyWith(
           price: found.price,
           change: found.change,
@@ -110,9 +160,8 @@ class WatchlistController extends GetxController {
         continue;
       }
       
-      // Search COMEX
       found = controller.comexData.firstWhereOrNull((d) => d.symbol == item.symbol);
-      if (found != null) {
+      if (found != null && found.price > 0) {
         updated.add(item.copyWith(
           price: found.price,
           change: found.change,
@@ -121,9 +170,8 @@ class WatchlistController extends GetxController {
         continue;
       }
       
-      // Search FX
       found = controller.fxData.firstWhereOrNull((d) => d.pair == item.symbol);
-      if (found != null) {
+      if (found != null && found.rate > 0) {
         updated.add(item.copyWith(
           price: found.rate,
           change: found.change,
@@ -160,7 +208,7 @@ class WatchlistController extends GetxController {
   /// Get filtered watchlist items (Strictly starred items only)
   List<WatchlistItemModel> get filteredItems {
     // Only show starred items as requested
-    var items = watchlistItems.where((item) => isStarred(item.id) || isStarred(item.symbol)).toList();
+    var items = watchlistItems.where((item) => isStarred(item.id)).toList();
 
     // Apply filter
     if (selectedFilter.value != 'All') {
@@ -219,27 +267,11 @@ class WatchlistController extends GetxController {
     for (final item in watchlistItems) {
       final itemType = (item.type ?? item.itemType).toLowerCase();
       switch (itemType) {
-        case 'lme':
-        case 'london':
-          channels.add('lme');
-          break;
-        case 'shfe':
-        case 'china':
-          channels.add('shfe');
-          break;
-        case 'comex':
-          channels.add('comex');
-          break;
         case 'fx':
           channels.add('fx');
           break;
         case 'spot':
           channels.add('spot');
-          break;
-        case 'future':
-          channels.add('lme');
-          channels.add('shfe');
-          channels.add('comex');
           break;
       }
     }
@@ -258,6 +290,7 @@ class WatchlistController extends GetxController {
 
     _watchlistService.updatePrice(
       symbol: symbol.toString(),
+      itemType: update.channel,
       price: data['price']?.toDouble() ?? data['rate']?.toDouble(),
       change: data['change']?.toDouble(),
       changePercent: data['changePercent']?.toDouble(),
@@ -277,7 +310,7 @@ class WatchlistController extends GetxController {
 
         // Add items to service and sync starred status
         for (final item in data) {
-          await _watchlistService.addToWatchlist(item);
+          await _watchlistService.addToWatchlist(item, overwritePrice: false);
           // Sync starred status from API
           if (item.isStarred && !isStarred(item.id)) {
             await _watchlistService.toggleStar(item.id);
@@ -301,7 +334,8 @@ class WatchlistController extends GetxController {
 
   /// Add item to watchlist
   Future<bool> addToWatchlist(WatchlistItemModel item) async {
-    final success = await _watchlistService.addToWatchlist(item);
+    // When adding manually from UI, we want to overwrite whatever price was there with the current live price
+    final success = await _watchlistService.addToWatchlist(item, overwritePrice: true);
 
     if (success) {
       try {
@@ -340,14 +374,14 @@ class WatchlistController extends GetxController {
   }
 
   /// Remove item from watchlist
-  Future<void> removeFromWatchlist(String idOrSymbol) async {
+  Future<void> removeFromWatchlist(String id) async {
     try {
-      await ApiClient().delete('${ApiConstants.removeWatchlist}/$idOrSymbol');
+      await ApiClient().delete('${ApiConstants.removeWatchlist}/$id');
     } catch (e) {
       // Continue with local removal even if API fails
     }
 
-    await _watchlistService.removeFromWatchlist(idOrSymbol);
+    await _watchlistService.removeFromWatchlist(id);
     Helpers.showSuccess('Removed from watchlist');
   }
 
@@ -367,8 +401,8 @@ class WatchlistController extends GetxController {
   }
 
   /// Check if item is in watchlist
-  bool isInWatchlist(String idOrSymbol) {
-    return _watchlistService.isInWatchlist(idOrSymbol);
+  bool isInWatchlist(String id) {
+    return _watchlistService.isInWatchlist(id);
   }
 
   /// Reorder watchlist items
@@ -383,12 +417,12 @@ class WatchlistController extends GetxController {
 
   /// Set alert for a watchlist item
   Future<void> setAlert({
-    required String idOrSymbol,
+    required String id,
     required double alertPrice,
     required String alertType,
   }) async {
     await _watchlistService.setAlert(
-      idOrSymbol: idOrSymbol,
+      id: id,
       alertPrice: alertPrice,
       alertType: alertType,
     );
@@ -396,8 +430,8 @@ class WatchlistController extends GetxController {
   }
 
   /// Remove alert from a watchlist item
-  Future<void> removeAlert(String idOrSymbol) async {
-    await _watchlistService.removeAlert(idOrSymbol);
+  Future<void> removeAlert(String id) async {
+    await _watchlistService.removeAlert(id);
     Helpers.showSuccess('Alert removed');
   }
 

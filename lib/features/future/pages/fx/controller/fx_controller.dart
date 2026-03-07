@@ -140,6 +140,21 @@ class FxController extends GetxController {
       }
 
       currencyPairs.value = base;
+      
+      // Update Watchlist prices
+      if (_watchlistService != null && base.isNotEmpty) {
+        for (final pair in base) {
+          if (pair.rate != null) {
+            _watchlistService!.updatePriceById(
+              id: pair.id,
+              price: pair.rate,
+              change: pair.change,
+              changePercent: pair.changePercent,
+            );
+          }
+        }
+      }
+
       debugPrint('✅ FX: ${base.where((p) => p.rate != null).length}/${base.length} rates loaded');
     } catch (e) {
       debugPrint('Error in FX loadData: $e');

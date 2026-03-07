@@ -76,10 +76,27 @@ class WatchlistService extends GetxService {
   }
 
   /// Add item to watchlist
-  Future<bool> addToWatchlist(WatchlistItemModel item) async {
-    // Check if already exists
-    if (watchlistItems.any((i) => i.id == item.id || i.symbol == item.symbol)) {
-      debugPrint('WatchlistService: Item ${item.symbol} already in watchlist');
+  /// Add item to watchlist
+  Future<bool> addToWatchlist(WatchlistItemModel item, {bool overwritePrice = true}) async {
+    // Check if already exists (Match by ID first, then by Symbol + Type)
+    final index = watchlistItems.indexWhere((i) {
+      if (i.id == item.id) return true;
+      return i.symbol == item.symbol && i.itemType.toLowerCase() == item.itemType.toLowerCase();
+    });
+
+    if (index != -1) {
+      debugPrint('WatchlistService: Item ${item.symbol} (${item.itemType}) already in watchlist');
+      if (overwritePrice) {
+        final old = watchlistItems[index];
+        // Update price and metadata if requested
+        watchlistItems[index] = old.copyWith(
+          price: item.price ?? old.price,
+          change: item.change ?? old.change,
+          changePercent: item.changePercent ?? old.changePercent,
+          lastUpdated: DateTime.now(),
+        );
+        await _saveToLocalStorage();
+      }
       return false;
     }
 
@@ -90,18 +107,17 @@ class WatchlistService extends GetxService {
   }
 
   /// Remove item from watchlist
-  Future<void> removeFromWatchlist(String idOrSymbol) async {
-    watchlistItems.removeWhere((item) =>
-      item.id == idOrSymbol || item.symbol == idOrSymbol);
+  Future<void> removeFromWatchlist(String id) async {
+    watchlistItems.removeWhere((item) => item.id == id);
 
     // Also remove from starred
-    starredItemIds.remove(idOrSymbol);
+    starredItemIds.remove(id);
 
     await Future.wait([
       _saveToLocalStorage(),
       _saveStarredItems(),
     ]);
-    debugPrint('WatchlistService: Removed $idOrSymbol from watchlist');
+    debugPrint('WatchlistService: Removed $id from watchlist');
   }
 
   /// Update an existing watchlist item
@@ -134,9 +150,8 @@ class WatchlistService extends GetxService {
   }
 
   /// Check if an item is in watchlist
-  bool isInWatchlist(String idOrSymbol) {
-    return watchlistItems.any((item) =>
-      item.id == idOrSymbol || item.symbol == idOrSymbol);
+  bool isInWatchlist(String id) {
+    return watchlistItems.any((item) => item.id == id);
   }
 
   /// Get all starred watchlist items
@@ -148,12 +163,11 @@ class WatchlistService extends GetxService {
 
   /// Set price alert for an item
   Future<void> setAlert({
-    required String idOrSymbol,
+    required String id,
     required double alertPrice,
     required String alertType,
   }) async {
-    final index = watchlistItems.indexWhere((item) =>
-      item.id == idOrSymbol || item.symbol == idOrSymbol);
+    final index = watchlistItems.indexWhere((item) => item.id == id);
 
     if (index != -1) {
       final old = watchlistItems[index];
@@ -168,9 +182,8 @@ class WatchlistService extends GetxService {
   }
 
   /// Remove alert from an item
-  Future<void> removeAlert(String idOrSymbol) async {
-    final index = watchlistItems.indexWhere((item) =>
-      item.id == idOrSymbol || item.symbol == idOrSymbol);
+  Future<void> removeAlert(String id) async {
+    final index = watchlistItems.indexWhere((item) => item.id == id);
 
     if (index != -1) {
       final old = watchlistItems[index];
@@ -187,22 +200,105 @@ class WatchlistService extends GetxService {
   /// Update price for a watchlist item (from WebSocket updates)
   void updatePrice({
     required String symbol,
+    String? itemType,
     double? price,
     double? change,
     double? changePercent,
   }) {
-    final index = watchlistItems.indexWhere((item) =>
-      item.symbol == symbol || item.symbol.contains(symbol));
+    bool hasChanges = false;
+    final now = DateTime.now();
 
-    if (index != -1) {
-      final old = watchlistItems[index];
-      watchlistItems[index] = old.copyWith(
-        price: price ?? old.price,
-        change: change ?? old.change,
-        changePercent: changePercent ?? old.changePercent,
-        lastUpdated: DateTime.now(),
-      );
-      // Don't await to avoid blocking WebSocket updates
+    for (int i = 0; i < watchlistItems.length; i++) {
+      final item = watchlistItems[i];
+      final matchesSymbol = item.symbol.toUpperCase() == symbol.toUpperCase();
+      if (!matchesSymbol) continue;
+
+      bool matchesType = true;
+      if (itemType != null) {
+        final normalizedChannel = itemType.toLowerCase();
+        final normalizedItemType = item.itemType.toLowerCase();
+        
+        matchesType = normalizedItemType == normalizedChannel;
+        
+        if (!matchesType) {
+          // Handle "future" wildcard
+          if (normalizedItemType == 'future' && 
+              (normalizedChannel == 'lme' || normalizedChannel == 'shfe' || normalizedChannel == 'china' || normalizedChannel == 'london' || normalizedChannel == 'comex')) {
+            matchesType = true;
+          }
+          // Handle exchange aliases
+          else if (normalizedChannel == 'london' && normalizedItemType == 'lme') matchesType = true;
+          else if (normalizedChannel == 'lme' && normalizedItemType == 'london') matchesType = true;
+          else if (normalizedChannel == 'china' && normalizedItemType == 'shfe') matchesType = true;
+          else if (normalizedChannel == 'shfe' && normalizedItemType == 'china') matchesType = true;
+        }
+      }
+
+      if (matchesType) {
+        watchlistItems[i] = item.copyWith(
+          price: price ?? item.price,
+          change: change ?? item.change,
+          changePercent: changePercent ?? item.changePercent,
+          lastUpdated: now,
+        );
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      _saveToLocalStorage();
+    }
+  }
+
+  /// Update price for a specific watchlist item by its ID
+  void updatePriceById({
+    required String id,
+    double? price,
+    double? change,
+    double? changePercent,
+  }) {
+    bool hasChanges = false;
+    final now = DateTime.now();
+
+    for (int i = 0; i < watchlistItems.length; i++) {
+      final item = watchlistItems[i];
+      bool matches = item.id == id;
+      
+      if (!matches && id.contains('_')) {
+        final parts = id.split('_');
+        final exchange = parts[0].toLowerCase();
+        final symbolPart = parts.length > 1 ? parts[1].toUpperCase() : '';
+        
+        final matchesSymbol = item.symbol.toUpperCase() == symbolPart;
+        
+        final normalizedItemType = item.itemType.toLowerCase();
+        bool matchesType = normalizedItemType == exchange;
+        
+        if (!matchesType) {
+          if (exchange == 'lme' && normalizedItemType == 'london') matchesType = true;
+          if (exchange == 'london' && normalizedItemType == 'lme') matchesType = true;
+          if (exchange == 'shfe' && normalizedItemType == 'china') matchesType = true;
+          if (exchange == 'china' && normalizedItemType == 'shfe') matchesType = true;
+          if (normalizedItemType == 'future' && (exchange == 'lme' || exchange == 'shfe' || exchange == 'comex')) matchesType = true;
+        }
+                             
+        matches = matchesSymbol && matchesType;
+      }
+
+      if (matches) {
+        if (item.price != price || item.change != change || item.changePercent != changePercent) {
+          watchlistItems[i] = item.copyWith(
+            price: price ?? item.price,
+            change: change ?? item.change,
+            changePercent: changePercent ?? item.changePercent,
+            lastUpdated: now,
+          );
+          hasChanges = true;
+        }
+      }
+    }
+
+    if (hasChanges) {
       _saveToLocalStorage();
     }
   }
@@ -211,14 +307,29 @@ class WatchlistService extends GetxService {
   void batchUpdatePrices(List<WatchlistItemModel> updatedItems) {
     bool hasChanges = false;
     for (final updated in updatedItems) {
-      final index = watchlistItems.indexWhere((item) => item.id == updated.id);
+      final index = watchlistItems.indexWhere((item) {
+        // Preference 1: ID Match (Safest)
+        if (item.id == updated.id) return true;
+        
+        // Preference 2: Symbol + Exchange Type Match
+        final matchesSymbol = item.symbol == updated.symbol;
+        final matchesType = item.itemType.toLowerCase() == updated.itemType.toLowerCase();
+        
+        return matchesSymbol && matchesType;
+      });
+      
       if (index != -1) {
         final old = watchlistItems[index];
-        // Only update if price actually changed or it's a forced sync
+        // Only update if price actually changed
         if (old.price != updated.price || 
             old.change != updated.change || 
             old.changePercent != updated.changePercent) {
-          watchlistItems[index] = updated.copyWith(lastUpdated: DateTime.now());
+          watchlistItems[index] = old.copyWith(
+            price: updated.price ?? old.price,
+            change: updated.change ?? old.change,
+            changePercent: updated.changePercent ?? old.changePercent,
+            lastUpdated: DateTime.now(),
+          );
           hasChanges = true;
         }
       }

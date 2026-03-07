@@ -429,10 +429,12 @@ class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
               color: isAdded ? ColorConstants.positiveGreen : ColorConstants.primaryBlue,
             ),
             onPressed: isAdded ? null : () {
+              final itemType = type == 'London' ? 'LME' : (type == 'China' ? 'SHFE' : type);
               watchlistController.addToWatchlist(WatchlistItemModel(
+                id: '${itemType}_$symbol',
                 symbol: symbol,
                 name: name,
-                itemType: type,
+                itemType: itemType,
                 currency: currency,
                 price: price,
                 change: change,
@@ -966,7 +968,7 @@ class _SetAlertDialogState extends State<SetAlertDialog> {
     }
 
     Get.find<WatchlistController>().setAlert(
-      idOrSymbol: widget.item.id,
+      id: widget.item.id,
       alertPrice: price,
       alertType: _alertType,
     );
@@ -1006,7 +1008,7 @@ class WatchlistDialogs {
           TextButton(
             onPressed: () {
               Get.back();
-              Get.find<WatchlistController>().removeFromWatchlist(item.symbol);
+              Get.find<WatchlistController>().removeFromWatchlist(item.id);
             },
             child: const Text(
               'Remove',

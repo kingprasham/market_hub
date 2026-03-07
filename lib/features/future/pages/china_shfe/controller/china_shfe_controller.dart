@@ -172,6 +172,21 @@ class ChinaSHFEController extends GetxController {
       }
 
       metals.value = base;
+
+      // Update Watchlist prices
+      if (_watchlistService != null && base.isNotEmpty) {
+        for (final metal in base) {
+          if (metal.lastPrice != null) {
+            _watchlistService!.updatePriceById(
+              id: metal.id,
+              price: metal.lastPrice,
+              change: metal.change,
+              changePercent: metal.changePercent,
+            );
+          }
+        }
+      }
+
       debugPrint('✅ SHFE: ${base.where((m) => m.lastPrice != null).length}/${base.length} prices loaded');
     } catch (e) {
       debugPrint('Error in SHFE loadData: $e');
