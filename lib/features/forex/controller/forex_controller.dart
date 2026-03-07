@@ -7,6 +7,7 @@ class ForexController extends GetxController {
   final isLoading = false.obs;
   final hasError = false.obs;
   final errorMessage = ''.obs;
+  final dataSource = 'Loading...'.obs;
   
   // Rate type for display (can be toggled)
   final rateType = 'TT'.obs; // TT, BILL, TRAVEL_CARD, CN
@@ -103,7 +104,10 @@ class ForexController extends GetxController {
         }
       });
       
-      if (newRates.isEmpty) {
+      if (newRates.isEmpty && currencyRates.isNotEmpty) {
+        // Keep existing rates on fetch failure/empty
+        dataSource.value = 'Data Unavailable'; 
+      } else if (newRates.isEmpty) {
         hasError.value = true;
         errorMessage.value = 'No forex data available';
       } else {

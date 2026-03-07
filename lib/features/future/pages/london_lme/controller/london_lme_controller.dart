@@ -74,21 +74,25 @@ class LondonLMEController extends GetxController {
 
       // Build base list with N/A values
       final now = DateTime.now();
-      final base = _fixedList.map((entry) => LMEMetal(
-        id: 'lme_${entry.$2.toLowerCase()}',
-        symbol: entry.$2,
-        name: 'LME ${entry.$1}',
-        contract: '3-Month',
-        lastPrice: null,
-        high: null,
-        low: null,
-        prevHigh: null,
-        prevLow: null,
-        change: null,
-        changePercent: null,
-        lastUpdated: now,
-        category: 'Base Metals',
-      )).toList();
+      
+      // Use existing data as base if available, otherwise create null-filled list
+      final List<LMEMetal> base = metals.isEmpty
+        ? _fixedList.map((entry) => LMEMetal(
+            id: 'lme_${entry.$2.toLowerCase()}',
+            symbol: entry.$2,
+            name: 'LME ${entry.$1}',
+            contract: '3-Month',
+            lastPrice: null,
+            high: null,
+            low: null,
+            prevHigh: null,
+            prevLow: null,
+            change: null,
+            changePercent: null,
+            lastUpdated: now,
+            category: 'Base Metals',
+          )).toList()
+        : List<LMEMetal>.from(metals);
 
       // Try scraper — fill in prices where available
       try {
@@ -140,11 +144,11 @@ class LondonLMEController extends GetxController {
           }
           dataSource.value = 'FX678 (Live)';
         } else {
-          dataSource.value = 'Scraper Unavailable';
+          dataSource.value = 'Data Unavailable';
         }
       } catch (e) {
         debugPrint('LME scraper error: $e');
-        dataSource.value = 'Scraper Error';
+        dataSource.value = 'Connection Error';
       }
 
       metals.value = base;

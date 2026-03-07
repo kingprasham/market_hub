@@ -75,23 +75,27 @@ class FxController extends GetxController {
       }
       hasError.value = false;
 
-      // Build base list with all N/A
       final now = DateTime.now();
-      final base = _fixedList.map((entry) => FxPair(
-        id: 'fx_${entry.$2}',
-        pair: entry.$1,
-        bidPrice: null,
-        askPrice: null,
-        rate: null,
-        high: null,
-        low: null,
-        prevHigh: null,
-        prevLow: null,
-        change: null,
-        changePercent: null,
-        lastUpdated: now,
-        category: 'FX',
-      )).toList();
+      
+      // 1. Create/Get base list. 
+      // If we already have data, USE IT as the base so we don't show N/A while loading or on failure.
+      final List<FxPair> base = currencyPairs.isEmpty 
+        ? _fixedList.map((entry) => FxPair(
+            id: 'fx_${entry.$2}',
+            pair: entry.$1,
+            bidPrice: null,
+            askPrice: null,
+            rate: null,
+            high: null,
+            low: null,
+            prevHigh: null,
+            prevLow: null,
+            change: null,
+            changePercent: null,
+            lastUpdated: now,
+            category: 'FX',
+          )).toList()
+        : List<FxPair>.from(currencyPairs);
 
       if (_scraper != null) {
         try {
@@ -123,11 +127,13 @@ class FxController extends GetxController {
             }
             dataSource.value = 'TradingEconomics.com';
           } else {
-            dataSource.value = 'API Unavailable';
+            // If scraper succeeds but returns empty (rare), we keep existing data but update status
+            dataSource.value = 'Data Unavailable';
           }
         } catch (e) {
           debugPrint('FX scraper error: $e');
-          dataSource.value = 'API Error';
+          dataSource.value = 'Connection Error';
+          // Keep existing base data!
         }
       } else {
         dataSource.value = 'Service Not Found';

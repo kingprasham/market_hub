@@ -72,21 +72,25 @@ class USComexController extends GetxController {
       hasError.value = false;
 
       final now = DateTime.now();
-      final base = List.generate(_fixedList.length, (i) => ComexMetal(
-        id: 'comex_${_fixedList[i].$2.toLowerCase()}',
-        symbol: _fixedList[i].$2,
-        name: _fixedList[i].$1,
-        contract: 'Front Month',
-        lastPrice: null,
-        high: null,
-        low: null,
-        prevHigh: null,
-        prevLow: null,
-        change: null,
-        changePercent: null,
-        lastUpdated: now,
-        category: _fixedList[i].$3,
-      ));
+      
+      // Use existing data as base if available, otherwise create null-filled list
+      final List<ComexMetal> base = metals.isEmpty
+        ? List.generate(_fixedList.length, (i) => ComexMetal(
+            id: 'comex_${_fixedList[i].$2.toLowerCase()}',
+            symbol: _fixedList[i].$2,
+            name: _fixedList[i].$1,
+            contract: 'Front Month',
+            lastPrice: null,
+            high: null,
+            low: null,
+            prevHigh: null,
+            prevLow: null,
+            change: null,
+            changePercent: null,
+            lastUpdated: now,
+            category: _fixedList[i].$3,
+          ))
+        : List<ComexMetal>.from(metals);
 
       try {
         final scraper = Get.put(FX678ScraperService());
@@ -137,11 +141,11 @@ class USComexController extends GetxController {
           }
           dataSource.value = 'quheqihuo.com (Live)';
         } else {
-          dataSource.value = 'Scraper Unavailable';
+          dataSource.value = 'Data Unavailable';
         }
       } catch (e) {
         debugPrint('COMEX scraper error: $e');
-        dataSource.value = 'Scraper Error';
+        dataSource.value = 'Connection Error';
       }
 
       metals.value = base;

@@ -97,20 +97,24 @@ class ChinaSHFEController extends GetxController {
       hasError.value = false;
 
       final now = DateTime.now();
-      final base = List.generate(_fixedList.length, (i) => SHFEMetal(
-        id: 'shfe_${_fixedList[i].$2.toLowerCase()}',
-        symbol: _fixedList[i].$2,
-        name: 'SHFE ${_fixedList[i].$1}',
-        contract: 'Main Continuous',
-        lastPrice: null,
-        high: null,
-        low: null,
-        prevHigh: null,
-        prevLow: null,
-        change: null,
-        changePercent: null,
-        lastUpdated: now,
-      ));
+      
+      // Use existing data as base if available, otherwise create null-filled list
+      final List<SHFEMetal> base = metals.isEmpty
+        ? List.generate(_fixedList.length, (i) => SHFEMetal(
+            id: 'shfe_${_fixedList[i].$2.toLowerCase()}',
+            symbol: _fixedList[i].$2,
+            name: 'SHFE ${_fixedList[i].$1}',
+            contract: 'Main Continuous',
+            lastPrice: null,
+            high: null,
+            low: null,
+            prevHigh: null,
+            prevLow: null,
+            change: null,
+            changePercent: null,
+            lastUpdated: now,
+          ))
+        : List<SHFEMetal>.from(metals);
 
       try {
         final scraper = Get.put(FX678ScraperService());
@@ -160,11 +164,11 @@ class ChinaSHFEController extends GetxController {
           }
           dataSource.value = 'SHFE (Live)';
         } else {
-          dataSource.value = 'Scraper Unavailable';
+          dataSource.value = 'Data Unavailable';
         }
       } catch (e) {
         debugPrint('SHFE scraper error: $e');
-        dataSource.value = 'Scraper Error';
+        dataSource.value = 'Connection Error';
       }
 
       metals.value = base;
