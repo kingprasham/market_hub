@@ -128,6 +128,8 @@ class ChinaSHFEController extends GetxController {
 
               if (_sessionService != null && match.price > 0) {
                 final results = _sessionService!.calculateChange(
+                  match.change,
+                  match.changePercent,
                   MarketType.china, 
                   base[i].symbol, 
                   match.price, 

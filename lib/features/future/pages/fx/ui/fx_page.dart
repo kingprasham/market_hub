@@ -222,6 +222,10 @@ class FxPage extends StatelessWidget {
                 ),
               ],
             ),
+            if (hasData) ...[
+              const SizedBox(height: 8),
+              _buildHighLowGrid(pair),
+            ],
           ],
         ),
       ),

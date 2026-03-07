@@ -2,7 +2,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../../../core/services/watchlist_service.dart';
-import '../../../../../core/services/scraper/jijinhao_scraper_service.dart';
+import '../../../../../core/services/scraper/fx678_scraper_service.dart';
 import '../../../../../core/services/market_session_service.dart';
 import '../../../../../data/models/watchlist/watchlist_item_model.dart';
 import '../../../../../core/utils/helpers.dart';
@@ -19,11 +19,14 @@ class USComexController extends GetxController {
   final filterOptions = <String>[];
 
   static const _fixedList = [
-    ('COMEX Silver', 'SI', 'Precious Metals'),
-    ('US fuel', 'NEHOA0', 'Energy'),
-    ('US crude oil', 'NECLA0', 'Energy'),
-    ('COMEX Gold', 'GC', 'Precious Metals'),
-    ('Meijing Copper', 'CMZCUA.FUTURES', 'Base Metals'),
+    ('Copper', 'HG', 'Base Metals'),
+    ('Gold', 'GC', 'Precious Metals'),
+    ('Silver', 'SI', 'Precious Metals'),
+    ('WTI Crude Oil', 'CL', 'Energy'),
+    ('Brent Crude Oil', 'OIL', 'Energy'),
+    ('Natural Gas', 'NG', 'Energy'),
+    ('Platinum', 'PL', 'Precious Metals'),
+    ('Palladium', 'PA', 'Precious Metals'),
   ];
 
   WatchlistService? _watchlistService;
@@ -86,7 +89,7 @@ class USComexController extends GetxController {
       ));
 
       try {
-        final scraper = Get.put(JijinhaoScraperService());
+        final scraper = Get.put(FX678ScraperService());
         final scraped = await scraper.fetchCOMEX();
         if (scraped.isNotEmpty) {
           for (int i = 0; i < base.length; i++) {
@@ -101,6 +104,8 @@ class USComexController extends GetxController {
 
               if (_sessionService != null && match.price > 0) {
                 final results = _sessionService!.calculateChange(
+                  match.change,
+                  match.changePercent,
                   MarketType.comex, 
                   base[i].symbol, 
                   match.price, 

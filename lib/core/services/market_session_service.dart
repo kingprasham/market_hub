@@ -13,11 +13,15 @@ class MarketSessionService extends GetxService {
 
   static const String _refPricePrefix = 'market_ref_price_';
 
-  /// Calculate change and percentage based on a custom reference price
-  Map<String, double> calculateChange(MarketType type, String symbol, double currentPrice, double? scraperPrevClose) {
+  /// Calculate change and percentage based on a custom reference price, with fallback to scraper values
+  Map<String, double> calculateChange(
+      double defaultChange, double defaultPercent,
+      MarketType type, String symbol, double currentPrice, double? scraperPrevClose) {
     final refPrice = _getReferencePrice(type, symbol) ?? scraperPrevClose ?? currentPrice;
     
-    if (refPrice == 0) return {'change': 0.0, 'percent': 0.0};
+    if (refPrice == 0 || refPrice == currentPrice) {
+      return {'change': defaultChange, 'percent': defaultPercent};
+    }
     
     final change = currentPrice - refPrice;
     final percent = (change / refPrice) * 100;
