@@ -19,12 +19,12 @@ class FxController extends GetxController {
 
   /// Fixed ordered list: (display pair, id key, match keywords)
   static const _fixedList = [
+    ('USD/INR',      'usd_inr',  ['USDINR']),
+    ('Dollar Index', 'dxy',      ['DXY']),
     ('EUR/USD',      'eur_usd',  ['EURUSD']),
     ('GBP/USD',      'gbp_usd',  ['GBPUSD']),
     ('USD/JPY',      'usd_jpy',  ['USDJPY']),
     ('USD/CNY',      'usd_cny',  ['USDCNY']),
-    ('USD/INR',      'usd_inr',  ['USDINR']),
-    ('Dollar Index', 'dxy',      ['DXY']),
   ];
 
   WatchlistService? _watchlistService;
