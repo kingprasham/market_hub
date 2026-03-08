@@ -82,12 +82,12 @@ class AlertsScreen extends GetView<AlertsController> {
                   gradient: LinearGradient(
                     colors: [
                       ColorConstants.primaryBlue,
-                      ColorConstants.primaryBlue.withOpacity(0.8),
+                      ColorConstants.primaryBlue.withValues(alpha: 0.8),
                     ],
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: ColorConstants.primaryBlue.withOpacity(0.3),
+                      color: ColorConstants.primaryBlue.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -219,7 +219,7 @@ class AlertsScreen extends GetView<AlertsController> {
               Icon(
                 Icons.article_outlined,
                 size: 64,
-                color: ColorConstants.textSecondary.withOpacity(0.5),
+                color: ColorConstants.textSecondary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 16),
               Text(
@@ -232,7 +232,7 @@ class AlertsScreen extends GetView<AlertsController> {
               Text(
                 'Check back later for updates',
                 style: TextStyles.caption.copyWith(
-                  color: ColorConstants.textSecondary.withOpacity(0.7),
+                  color: ColorConstants.textSecondary.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -260,7 +260,7 @@ class AlertsScreen extends GetView<AlertsController> {
               Icon(
                 Icons.translate_outlined,
                 size: 64,
-                color: ColorConstants.textSecondary.withOpacity(0.5),
+                color: ColorConstants.textSecondary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 16),
               Text(
@@ -273,7 +273,7 @@ class AlertsScreen extends GetView<AlertsController> {
               Text(
                 'बाद में अपडेट के लिए जांचें',
                 style: TextStyles.caption.copyWith(
-                  color: ColorConstants.textSecondary.withOpacity(0.7),
+                  color: ColorConstants.textSecondary.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -301,7 +301,7 @@ class AlertsScreen extends GetView<AlertsController> {
               Icon(
                 Icons.description_outlined,
                 size: 64,
-                color: ColorConstants.textSecondary.withOpacity(0.5),
+                color: ColorConstants.textSecondary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 16),
               Text(
@@ -314,7 +314,7 @@ class AlertsScreen extends GetView<AlertsController> {
               Text(
                 'Check back later for updates',
                 style: TextStyles.caption.copyWith(
-                  color: ColorConstants.textSecondary.withOpacity(0.7),
+                  color: ColorConstants.textSecondary.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -418,11 +418,11 @@ class AlertsScreen extends GetView<AlertsController> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
                 border: item.isUrgent
-                    ? Border.all(color: ColorConstants.negativeRed.withOpacity(0.3))
+                    ? Border.all(color: ColorConstants.negativeRed.withValues(alpha: 0.3))
                     : null,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
+                    color: Colors.black.withValues(alpha: 0.03),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -493,7 +493,7 @@ class AlertsScreen extends GetView<AlertsController> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -502,12 +502,11 @@ class AlertsScreen extends GetView<AlertsController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image or placeholder
             Container(
               height: 140,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: ColorConstants.primaryBlue.withOpacity(0.1),
+                color: ColorConstants.primaryBlue.withValues(alpha: 0.1),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
               ),
               child: item.hasImage
@@ -517,15 +516,7 @@ class AlertsScreen extends GetView<AlertsController> {
                         item.imageUrl!,
                         fit: BoxFit.cover,
                         width: double.infinity,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Center(
-                            child: Icon(
-                              Icons.article_outlined,
-                              size: 48,
-                              color: ColorConstants.primaryBlue.withOpacity(0.5),
-                            ),
-                          );
-                        },
+                        errorBuilder: (context, error, stackTrace) => _buildNewsPlaceholder(item.sourceName),
                         loadingBuilder: (context, child, loadingProgress) {
                           if (loadingProgress == null) return child;
                           return Center(
@@ -540,13 +531,7 @@ class AlertsScreen extends GetView<AlertsController> {
                         },
                       ),
                     )
-                  : Center(
-                      child: Icon(
-                        Icons.article_outlined,
-                        size: 48,
-                        color: ColorConstants.primaryBlue.withOpacity(0.5),
-                      ),
-                    ),
+                  : _buildNewsPlaceholder(item.sourceName),
             ),
             Padding(
               padding: const EdgeInsets.all(16),
@@ -559,7 +544,7 @@ class AlertsScreen extends GetView<AlertsController> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: ColorConstants.primaryOrange.withOpacity(0.1),
+                            color: ColorConstants.primaryOrange.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -683,7 +668,7 @@ class AlertsScreen extends GetView<AlertsController> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -691,18 +676,7 @@ class AlertsScreen extends GetView<AlertsController> {
         ),
         child: Row(
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.picture_as_pdf,
-                color: Colors.red,
-              ),
-            ),
+            _buildCircularPlaceholder(),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -768,12 +742,12 @@ class AlertsScreen extends GetView<AlertsController> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: importance == 'high'
-                ? ColorConstants.primaryOrange.withOpacity(0.3)
+                ? ColorConstants.primaryOrange.withValues(alpha: 0.3)
                 : ColorConstants.borderColor,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -787,7 +761,7 @@ class AlertsScreen extends GetView<AlertsController> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: isUpcoming
-                    ? ColorConstants.primaryBlue.withOpacity(0.1)
+                    ? ColorConstants.primaryBlue.withValues(alpha: 0.1)
                     : ColorConstants.backgroundColor,
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -822,7 +796,7 @@ class AlertsScreen extends GetView<AlertsController> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: _getCountryColor(_getCountryFromTitle(item.title)).withOpacity(0.1),
+                          color: _getCountryColor(_getCountryFromTitle(item.title)).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -924,6 +898,94 @@ class AlertsScreen extends GetView<AlertsController> {
             child: const Text('Yes'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNewsPlaceholder(String? sourceName) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomLeft,
+          end: Alignment.topRight,
+          colors: [
+            ColorConstants.primaryBlue,
+            ColorConstants.primaryBlue.withValues(alpha: 0.8),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -20,
+            bottom: -20,
+            child: Opacity(
+              opacity: 0.1,
+              child: const Icon(
+                Icons.newspaper_rounded,
+                size: 100,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.article_rounded,
+                  size: 48,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+                if (sourceName != null) ...[
+                  const SizedBox(height: 8),
+                  Opacity(
+                    opacity: 0.3,
+                    child: Text(
+                      sourceName.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCircularPlaceholder() {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.red,
+            Color(0xFFD32F2F),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.picture_as_pdf,
+        color: Colors.white,
+        size: 24,
       ),
     );
   }

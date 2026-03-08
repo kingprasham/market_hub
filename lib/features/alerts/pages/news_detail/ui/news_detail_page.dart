@@ -81,7 +81,7 @@ class NewsDetailPage extends GetView<NewsDetailController> {
         height: 250,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: ColorConstants.primaryBlue.withOpacity(0.1),
+          color: ColorConstants.primaryBlue.withValues(alpha: 0.1),
         ),
         child: Image.network(
           controller.newsItem.imageUrl!,
@@ -91,7 +91,7 @@ class NewsDetailPage extends GetView<NewsDetailController> {
               child: Icon(
                 Icons.image_outlined,
                 size: 64,
-                color: ColorConstants.textSecondary.withOpacity(0.5),
+                color: ColorConstants.textSecondary.withValues(alpha: 0.5),
               ),
             );
           },
@@ -113,15 +113,62 @@ class NewsDetailPage extends GetView<NewsDetailController> {
     return Container(
       height: 200,
       width: double.infinity,
+      child: _buildPlaceholder(),
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
       decoration: BoxDecoration(
-        color: ColorConstants.primaryBlue.withOpacity(0.1),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.article_outlined,
-          size: 64,
-          color: ColorConstants.primaryBlue.withOpacity(0.5),
+        gradient: LinearGradient(
+          begin: Alignment.bottomLeft,
+          end: Alignment.topRight,
+          colors: [
+            ColorConstants.primaryBlue,
+            ColorConstants.primaryBlue.withValues(alpha: 0.8),
+          ],
         ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -30,
+            bottom: -30,
+            child: Opacity(
+              opacity: 0.1,
+              child: const Icon(
+                Icons.newspaper_rounded,
+                size: 150,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.article_rounded,
+                  size: 64,
+                  color: Colors.white.withValues(alpha: 0.7),
+                ),
+                const SizedBox(height: 12),
+                Opacity(
+                  opacity: 0.4,
+                  child: Text(
+                    controller.newsItem.sourceName.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -141,7 +188,7 @@ class NewsDetailPage extends GetView<NewsDetailController> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: ColorConstants.primaryOrange.withOpacity(0.1),
+                  color: ColorConstants.primaryOrange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -191,7 +238,7 @@ class NewsDetailPage extends GetView<NewsDetailController> {
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundColor: ColorConstants.primaryBlue.withOpacity(0.1),
+                  backgroundColor: ColorConstants.primaryBlue.withValues(alpha: 0.1),
                   child: Icon(
                     Icons.person_outline,
                     color: ColorConstants.primaryBlue,
@@ -320,7 +367,7 @@ class NewsDetailPage extends GetView<NewsDetailController> {
               width: 100,
               height: 70,
               decoration: BoxDecoration(
-                color: ColorConstants.primaryBlue.withOpacity(0.1),
+                color: ColorConstants.primaryBlue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: news.hasImage
@@ -329,20 +376,10 @@ class NewsDetailPage extends GetView<NewsDetailController> {
                       child: Image.network(
                         news.imageUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(
-                            Icons.article_outlined,
-                            size: 32,
-                            color: ColorConstants.primaryBlue.withOpacity(0.5),
-                          );
-                        },
+                        errorBuilder: (context, error, stackTrace) => _buildSmallPlaceholder(news.sourceName),
                       ),
                     )
-                  : Icon(
-                      Icons.article_outlined,
-                      size: 32,
-                      color: ColorConstants.primaryBlue.withOpacity(0.5),
-                    ),
+                  : _buildSmallPlaceholder(news.sourceName),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -382,7 +419,7 @@ class NewsDetailPage extends GetView<NewsDetailController> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -428,6 +465,28 @@ class NewsDetailPage extends GetView<NewsDetailController> {
             )),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSmallPlaceholder(String sourceName) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            ColorConstants.primaryBlue,
+            ColorConstants.primaryBlue.withValues(alpha: 0.8),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.article_rounded,
+          size: 24,
+          color: Colors.white.withValues(alpha: 0.7),
+        ),
       ),
     );
   }

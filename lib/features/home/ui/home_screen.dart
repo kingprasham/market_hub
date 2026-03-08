@@ -840,7 +840,7 @@ class HomeScreen extends GetView<HomeController> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -857,7 +857,7 @@ class HomeScreen extends GetView<HomeController> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: ColorConstants.primaryOrange.withOpacity(0.12),
+                      color: ColorConstants.primaryOrange.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -911,29 +911,16 @@ class HomeScreen extends GetView<HomeController> {
                 itemBuilder: (context, index) {
                   final update = updates[index];
                   return InkWell(
-                    onTap: () {
-                      if (update.hasPdf && update.pdfUrl != null) {
-                        Get.toNamed(AppRoutes.pdfViewer, arguments: {
-                          'url': update.pdfUrl,
-                          'title': update.title,
-                        });
-                      } else {
-                        Get.dialog(
-                          AlertDialog(
-                            title: Text(update.title),
-                            content: SingleChildScrollView(
-                              child: Text(update.description),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Get.back(),
-                                child: const Text('OK'),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                    },
+                        onTap: () {
+                          if (update.hasPdf && update.pdfUrl != null) {
+                            Get.toNamed(AppRoutes.pdfViewer, arguments: {
+                              'url': update.pdfUrl,
+                              'title': update.title,
+                            });
+                          } else {
+                            Get.toNamed(AppRoutes.updateDetail, arguments: update);
+                          }
+                        },
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Row(
@@ -950,7 +937,7 @@ class HomeScreen extends GetView<HomeController> {
                                         margin: const EdgeInsets.only(right: 8),
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: Colors.red.withOpacity(0.1),
+                                          color: Colors.red.withValues(alpha: 0.1),
                                           borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: Text(
@@ -991,7 +978,7 @@ class HomeScreen extends GetView<HomeController> {
                                     Icon(
                                       Icons.access_time_rounded,
                                       size: 12,
-                                      color: ColorConstants.textHint.withOpacity(0.8),
+                                      color: ColorConstants.textHint.withValues(alpha: 0.8),
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
@@ -1007,13 +994,13 @@ class HomeScreen extends GetView<HomeController> {
                                       Icon(
                                         Icons.picture_as_pdf_outlined,
                                         size: 14,
-                                        color: Colors.red.withOpacity(0.7),
+                                        color: Colors.red.withValues(alpha: 0.7),
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
                                         'PDF Attached',
                                         style: TextStyles.labelSmall.copyWith(
-                                          color: Colors.red.withOpacity(0.7),
+                                          color: Colors.red.withValues(alpha: 0.7),
                                           fontSize: 10,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -1033,14 +1020,12 @@ class HomeScreen extends GetView<HomeController> {
                                 width: 70,
                                 height: 70,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  width: 70,
-                                  height: 70,
-                                  color: ColorConstants.dividerColor,
-                                  child: const Icon(Icons.image_not_supported_outlined, size: 20),
-                                ),
+                                errorBuilder: (_, __, ___) => _buildUpdatePlaceholder(update.category),
                               ),
                             ),
+                          ] else ...[
+                            const SizedBox(width: 16),
+                            _buildUpdatePlaceholder(update.category),
                           ],
                         ],
                       ),
@@ -1061,7 +1046,7 @@ class HomeScreen extends GetView<HomeController> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
-                    color: ColorConstants.primaryOrange.withOpacity(0.04),
+                    color: ColorConstants.primaryOrange.withValues(alpha: 0.04),
                     borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
                   ),
                   child: Row(
@@ -1089,5 +1074,45 @@ class HomeScreen extends GetView<HomeController> {
         ),
       );
     });
+  }
+
+  Widget _buildUpdatePlaceholder(String? category) {
+    return Container(
+      width: 70,
+      height: 70,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            ColorConstants.primaryOrange,
+            ColorConstants.primaryOrange.withValues(alpha: 0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: ColorConstants.primaryOrange.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Icon(
+          _getUpdateIcon(category),
+          size: 28,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  IconData _getUpdateIcon(String? category) {
+    final cat = category?.toLowerCase() ?? '';
+    if (cat.contains('ferrous')) return Icons.factory_outlined;
+    if (cat.contains('market')) return Icons.show_chart_rounded;
+    if (cat.contains('price')) return Icons.monetization_on_rounded;
+    return Icons.rss_feed_rounded;
   }
 }

@@ -51,7 +51,7 @@ class AllUpdatesPage extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: ColorConstants.primaryOrange.withOpacity(0.1),
+                          color: ColorConstants.primaryOrange.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -92,7 +92,7 @@ class AllUpdatesPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withValues(alpha: 0.04),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -106,21 +106,7 @@ class AllUpdatesPage extends StatelessWidget {
                             'title': update.title,
                           });
                         } else {
-                          Get.dialog(
-                            AlertDialog(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              title: Text(update.title, style: TextStyles.h3),
-                              content: SingleChildScrollView(
-                                child: Text(update.description, style: TextStyles.bodyMedium),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Get.back(),
-                                  child: const Text('OK', style: TextStyle(color: ColorConstants.primaryOrange, fontWeight: FontWeight.bold)),
-                                ),
-                              ],
-                            ),
-                          );
+                          Get.toNamed(AppRoutes.updateDetail, arguments: update);
                         }
                       },
                       borderRadius: BorderRadius.circular(16),
@@ -140,9 +126,9 @@ class AllUpdatesPage extends StatelessWidget {
                                           margin: const EdgeInsets.only(right: 8),
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: Colors.red.withOpacity(0.1),
+                                            color: Colors.red.withValues(alpha: 0.1),
                                             borderRadius: BorderRadius.circular(4),
-                                          ),
+                                        ),
                                           child: const Text(
                                             'NEW',
                                             style: TextStyle(
@@ -205,14 +191,12 @@ class AllUpdatesPage extends StatelessWidget {
                                   width: 80,
                                   height: 80,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    width: 80,
-                                    height: 80,
-                                    color: ColorConstants.dividerColor,
-                                    child: const Icon(Icons.image_not_supported_outlined, size: 24),
-                                  ),
+                                  errorBuilder: (_, __, ___) => _buildUpdatePlaceholder(update.category),
                                 ),
                               ),
+                            ] else ...[
+                              const SizedBox(width: 16),
+                              _buildUpdatePlaceholder(update.category),
                             ],
                           ],
                         ),
@@ -226,5 +210,45 @@ class AllUpdatesPage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildUpdatePlaceholder(String? category) {
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            ColorConstants.primaryOrange,
+            ColorConstants.primaryOrange.withValues(alpha: 0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: ColorConstants.primaryOrange.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Icon(
+          _getUpdateIcon(category),
+          size: 32,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  IconData _getUpdateIcon(String? category) {
+    final cat = category?.toLowerCase() ?? '';
+    if (cat.contains('ferrous')) return Icons.factory_outlined;
+    if (cat.contains('market')) return Icons.show_chart_rounded;
+    if (cat.contains('price')) return Icons.monetization_on_rounded;
+    return Icons.rss_feed_rounded;
   }
 }

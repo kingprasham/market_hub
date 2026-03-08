@@ -104,6 +104,7 @@ import '../../features/profile/pages/privacy_policy_page.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/home/ui/all_updates_page.dart';
 import '../../features/home/ui/ad_detail_screen.dart';
+import '../../features/home/ui/update_detail_screen.dart';
 import '../../features/home/ui/non_ferrous_update_screen.dart';
 
 class AppPages {
@@ -409,6 +410,12 @@ class AppPages {
     GetPage(
       name: AppRoutes.adDetail,
       page: () => const AdDetailScreen(),
+      transition: Transition.rightToLeft,
+    ),
+    // Update Detail
+    GetPage(
+      name: AppRoutes.updateDetail,
+      page: () => const UpdateDetailScreen(),
       transition: Transition.rightToLeft,
     ),
     // Non-Ferrous Updates

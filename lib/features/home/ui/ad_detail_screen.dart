@@ -43,17 +43,15 @@ class AdDetailScreen extends StatelessWidget {
                     ad.imagePath,
                     fit: BoxFit.fitWidth,
                     width: double.infinity,
-                    errorBuilder: (_, __, ___) => Image.asset(
-                      'assets/images/1.jpeg',
-                      fit: BoxFit.fitWidth,
-                      width: double.infinity,
-                    ),
+                    errorBuilder: (_, __, ___) => _buildPlaceholder(ad),
                   )
-                : Image.asset(
-                    ad.imagePath,
-                    fit: BoxFit.fitWidth,
-                    width: double.infinity,
-                  ),
+                : ad.imagePath.isNotEmpty && !ad.imagePath.contains('assets/images/1.jpeg')
+                    ? Image.asset(
+                        ad.imagePath,
+                        fit: BoxFit.fitWidth,
+                        width: double.infinity,
+                      )
+                    : _buildPlaceholder(ad),
           ),
 
           // Content
@@ -234,7 +232,7 @@ class AdDetailScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -246,7 +244,7 @@ class AdDetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: ColorConstants.primaryBlue.withOpacity(0.1),
+              color: ColorConstants.primaryBlue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: ColorConstants.primaryBlue, size: 22),
@@ -293,14 +291,14 @@ class AdDetailScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: color, size: 22),
@@ -318,6 +316,48 @@ class AdDetailScreen extends StatelessWidget {
             Icon(Icons.arrow_forward_ios, size: 16, color: color),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder(AdData ad) {
+    return Container(
+      width: double.infinity,
+      height: 220,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomLeft,
+          end: Alignment.topRight,
+          colors: [
+            ColorConstants.primaryBlue,
+            ColorConstants.primaryBlue.withValues(alpha: 0.7),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Opacity(
+              opacity: 0.1,
+              child: Text(
+                ad.companyName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 40,
+                  fontWeight: FontWeight.w900,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          Center(
+            child: Icon(
+              Icons.business_rounded,
+              size: 80,
+              color: Colors.white.withValues(alpha: 0.2),
+            ),
+          ),
+        ],
       ),
     );
   }
