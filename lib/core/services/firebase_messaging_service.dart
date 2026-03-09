@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import '../storage/local_storage.dart';
 import '../../features/navigation/controller/navigation_controller.dart';
 import '../../features/alerts/controller/alerts_controller.dart';
+import '../../features/spot_price/controller/spot_price_controller.dart';
 
 /// Background message handler (must be top-level function)
 @pragma('vm:entry-point')
@@ -138,14 +139,27 @@ class FirebaseMessagingService extends GetxService {
     final notification = message.notification;
     if (notification != null) {
       final data = message.data;
+      final typeStr = _getNotificationType(data['type']);
+
+      // Build navigationArgs for price alerts so Notifications tab tap works
+      Map<String, dynamic>? navigationArgs;
+      if (data['type'] == 'price_alert') {
+        navigationArgs = {
+          'tab': 2, // Spot tab
+          'category': data['category'] ?? 'Non-Ferrous',
+          'city': data['city'] ?? '',
+        };
+      }
+
       final notificationData = {
         'id': message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
         'title': notification.title ?? 'Market Hub',
         'message': notification.body ?? '',
-        'type': _getNotificationType(data['type']),
+        'type': typeStr,
         'timestamp': DateTime.now().toIso8601String(),
         'isRead': false,
         'data': data,
+        if (navigationArgs != null) 'navigationArgs': navigationArgs,
       };
       
       // Store in local storage for persistence
@@ -231,6 +245,32 @@ class FirebaseMessagingService extends GetxService {
           try {
             final navController = Get.find<NavigationController>();
             navController.changePage(0); // Home Tab
+          } catch (e) {
+            debugPrint('FCM Navigation Error: $e');
+          }
+        });
+        break;
+
+      case 'price_alert':
+        // Navigate to Spot tab (index 2) with correct category/city
+        debugPrint('FCM: Opening spot prices from price alert notification');
+        Get.offAllNamed('/main');
+        Future.delayed(const Duration(milliseconds: 500), () {
+          try {
+            final navController = Get.find<NavigationController>();
+            navController.changePage(2); // Spot Tab (index 2)
+
+            // Pre-select category and city if provided
+            if (Get.isRegistered<SpotPriceController>()) {
+              final spotController = Get.find<SpotPriceController>();
+              final category = data['category'] ?? 'Non-Ferrous';
+              final city = data['city'] ?? '';
+
+              spotController.selectedCategory.value = category;
+              if (city.isNotEmpty && category == 'Non-Ferrous') {
+                spotController.selectedNonFerrousCity.value = city.toUpperCase();
+              }
+            }
           } catch (e) {
             debugPrint('FCM Navigation Error: $e');
           }

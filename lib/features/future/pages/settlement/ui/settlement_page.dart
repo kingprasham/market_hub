@@ -131,14 +131,27 @@ class SettlementPage extends StatelessWidget {
                   topRight: Radius.circular(12),
                 ),
               ),
-              child: Center(
-                child: Text(
-                  item.metal,
-                  style: TextStyles.bodyMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: ColorConstants.primaryBlue,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    item.metal,
+                    style: TextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: ColorConstants.primaryBlue,
+                    ),
                   ),
-                ),
+                  if (item.date.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      item.date,
+                      style: TextStyles.caption.copyWith(
+                        fontSize: 10,
+                        color: ColorConstants.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             

@@ -44,16 +44,26 @@ class JijinhaoScraperService extends GetxService {
       }
 
       final Map<String, dynamic> data = _tryParseJson(jsonStr);
-      final keys = ['JO_12553', 'JO_108893', 'JO_108878', 'JO_12552', 'JO_50814'];
 
-      for (final key in keys) {
+      // Code → (English name, symbol, exchange)
+      const codeMap = {
+        'JO_12552': ('Gold', 'GC', 'COMEX'),
+        'JO_12553': ('Silver', 'SI', 'COMEX'),
+        'JO_50814': ('Copper', 'HG', 'COMEX'),
+        'JO_108878': ('WTI Crude Oil', 'CL', 'NYMEX'),
+        'JO_108893': ('Brent Crude Oil', 'OIL', 'ICE'),
+      };
+
+      for (final entry in codeMap.entries) {
+        final key = entry.key;
+        final info = entry.value;
         if (data.containsKey(key)) {
           final item = data[key];
           
           results.add(ScrapedMetal(
-            exchange: 'COMEX',
-            symbol: item['showCode']?.toString() ?? '',
-            name: item['showName']?.toString() ?? '',
+            exchange: info.$3,
+            symbol: info.$2,
+            name: info.$1,
             price: _parseDouble(item['q63']),
             change: _parseDouble(item['q70']),
             changePercent: _parseDouble(item['q80']),

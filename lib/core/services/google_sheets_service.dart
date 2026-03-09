@@ -1817,7 +1817,9 @@ class GoogleSheetsService extends GetxService {
 
   void _parseSettlementData(SheetData sheet) {
     // Parse right side (Cols O-S, Indices 14-18)
+    // Date may be in Col T (index 19) or Col N (index 13)
     final data = <SettlementModel>[];
+    String blockDate = ''; // Shared date for the settlement block
 
     for (int i = 0; i < sheet.rows.length; i++) {
       final row = sheet.rows[i];
@@ -1839,9 +1841,26 @@ class GoogleSheetsService extends GetxService {
         continue;
       }
 
+      // Try to extract date from Col T (index 19), then Col N (index 13)
+      String rowDate = '';
+      if (row.length > 19 && row[19].trim().isNotEmpty) {
+        rowDate = row[19].trim();
+      } else if (row.length > 13 && row[13].trim().isNotEmpty) {
+        final candidate = row[13].trim();
+        // Only use it if it looks like a date (contains / or - or digit)
+        if (candidate.contains('/') || candidate.contains('-') || RegExp(r'^\d').hasMatch(candidate)) {
+          rowDate = candidate;
+        }
+      }
+      
+      // Track block-level date
+      if (rowDate.isNotEmpty && blockDate.isEmpty) {
+        blockDate = rowDate;
+      }
+
       try {
         data.add(SettlementModel(
-          date: '', 
+          date: rowDate.isNotEmpty ? rowDate : blockDate,
           metal: metal,
           bidCash: _parseSinglePrice(row[15]) ?? 0.0, // P
           askCash: row.length > 16 ? _parseSinglePrice(row[16]) ?? 0.0 : 0.0, // Q

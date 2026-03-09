@@ -645,6 +645,33 @@ class AdminApiService extends GetxService {
     }
   }
 
+  // ==================== NOTIFICATIONS ====================
+
+  /// Get stored notifications (price alerts, etc.) from server
+  Future<List<Map<String, dynamic>>> getNotifications({int limit = 100, String? type}) async {
+    try {
+      final queryParams = <String, dynamic>{'limit': limit};
+      if (type != null) queryParams['type'] = type;
+
+      final response = await _dio.get(
+        ApiConstants.adminNotifications,
+        queryParameters: queryParams,
+      );
+
+      final data = response.data is String
+          ? jsonDecode(response.data)
+          : response.data;
+
+      if (data['success'] == true) {
+        return List<Map<String, dynamic>>.from(data['notifications'] ?? []);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Failed to get notifications: $e');
+      return [];
+    }
+  }
+
   // ==================== ERROR HANDLING ====================
 
   Map<String, dynamic> _handleError(DioException e) {

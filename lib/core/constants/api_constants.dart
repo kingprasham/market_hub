@@ -34,6 +34,9 @@ class ApiConstants {
   static const String adminAddPriceAlert = 'add-price-alert.php';
   static const String adminDeletePriceAlert = 'delete-price-alert.php';
 
+  // Notifications
+  static const String adminNotifications = 'get_notifications.php';
+
   // ==================== ORIGINAL API ENDPOINTS ====================
   // Auth Endpoints
   static const String register = '/api/auth/register';

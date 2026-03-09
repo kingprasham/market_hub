@@ -331,8 +331,17 @@ function send_push_to_all($title, $body, $data = [], $target_plans = null) {
     
     $sent = 0;
     $failed = 0;
+    $cleaned = 0;
+    $processed_tokens = []; // Track tokens to prevent duplicates for multiple accounts on same device
     
     foreach ($users as $user) {
+        $token = $user['fcm_token'];
+        
+        // Skip if we already sent to this device token in this batch
+        if (in_array($token, $processed_tokens)) {
+            continue;
+        }
+        
         // Check plan targeting if specified
         if ($target_plans !== null && !empty($target_plans)) {
             if (!in_array('all', $target_plans) && !in_array($user['plan_id'], $target_plans)) {
@@ -340,15 +349,42 @@ function send_push_to_all($title, $body, $data = [], $target_plans = null) {
             }
         }
         
-        $result = send_push_notification($user['fcm_token'], $title, $body, $data);
+        $processed_tokens[] = $token;
+        $result = send_push_notification($token, $title, $body, $data);
+        
         if ($result) {
-            $sent++;
+            // Check for stale/invalid token errors from FCM
+            $error_code = '';
+            if (isset($result['error'])) {
+                $error_code = isset($result['error']['status']) ? $result['error']['status'] : '';
+            }
+            
+            if ($error_code === 'NOT_FOUND' || $error_code === 'UNREGISTERED' || $error_code === 'INVALID_ARGUMENT') {
+                // Token is stale — user uninstalled app or token expired
+                db_query(
+                    "UPDATE users SET fcm_token = NULL WHERE id = ?",
+                    'i',
+                    [$user['id']]
+                );
+                $cleaned++;
+                $failed++;
+                error_log("Cleaned stale FCM token for user ID: {$user['id']}");
+            } elseif (isset($result['name'])) {
+                // FCM V1 returns 'name' on success
+                $sent++;
+            } else {
+                $failed++;
+            }
         } else {
             $failed++;
         }
     }
     
-    return ['sent' => $sent, 'failed' => $failed, 'total' => count($users)];
+    if ($cleaned > 0) {
+        error_log("FCM: Cleaned $cleaned stale tokens this batch");
+    }
+    
+    return ['sent' => $sent, 'failed' => $failed, 'cleaned' => $cleaned, 'total' => count($users)];
 }
 
 /**

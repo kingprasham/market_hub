@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../../../core/services/watchlist_service.dart';
 import '../../../../../core/services/scraper/fx678_scraper_service.dart';
+import '../../../../../core/services/scraper/jijinhao_scraper_service.dart';
 import '../../../../../core/services/market_session_service.dart';
 import '../../../../../data/models/watchlist/watchlist_item_model.dart';
 import '../../../../../core/utils/helpers.dart';
@@ -24,9 +25,6 @@ class USComexController extends GetxController {
     ('Silver', 'SI', 'Precious Metals'),
     ('WTI Crude Oil', 'CL', 'Energy'),
     ('Brent Crude Oil', 'OIL', 'Energy'),
-    ('Natural Gas', 'NG', 'Energy'),
-    ('Platinum', 'PL', 'Precious Metals'),
-    ('Palladium', 'PA', 'Precious Metals'),
   ];
 
   WatchlistService? _watchlistService;
@@ -92,56 +90,23 @@ class USComexController extends GetxController {
           ))
         : List<ComexMetal>.from(metals);
 
+      // Primary: Jijinhao API (quheqihuo.com source) — provides high/low
       try {
-        final scraper = Get.put(FX678ScraperService());
-        final scraped = await scraper.fetchCOMEX();
+        final jijinhao = Get.put(JijinhaoScraperService());
+        final scraped = await jijinhao.fetchCOMEX();
         if (scraped.isNotEmpty) {
-          for (int i = 0; i < base.length; i++) {
-            final match = scraped.firstWhereOrNull((s) =>
-              s.symbol.toUpperCase() == _fixedList[i].$2.toUpperCase() ||
-              s.name.toUpperCase().contains(_fixedList[i].$1.toUpperCase())
-            );
-            if (match != null) {
-              // Custom change calculation based on session time
-              double finalChange = match.change;
-              double finalPercent = match.changePercent;
-
-              if (_sessionService != null && match.price > 0) {
-                final results = _sessionService!.calculateChange(
-                  match.change,
-                  match.changePercent,
-                  MarketType.comex, 
-                  base[i].symbol, 
-                  match.price, 
-                  match.prev,
-                );
-                finalChange = results['change']!;
-                finalPercent = results['percent']!;
-                
-                // Track current price for reference capture
-                _sessionService!.updateReferencePrice(MarketType.comex, base[i].symbol, match.price);
-              }
-
-              base[i] = ComexMetal(
-                id: base[i].id,
-                symbol: base[i].symbol,
-                name: base[i].name,
-                contract: base[i].contract,
-                lastPrice: match.price == 0 ? null : match.price,
-                high: match.high == 0 ? null : match.high,
-                low: match.low == 0 ? null : match.low,
-                prevHigh: match.prevHigh == 0 ? null : match.prevHigh,
-                prevLow: match.prevLow == 0 ? null : match.prevLow,
-                change: finalChange,
-                changePercent: finalPercent,
-                lastUpdated: now,
-                category: base[i].category,
-              );
-            }
-          }
+          _applyScrapedData(base, scraped);
           dataSource.value = 'quheqihuo.com (Live)';
         } else {
-          dataSource.value = 'Data Unavailable';
+          // Fallback: FX678/Sina
+          final fx678 = Get.put(FX678ScraperService());
+          final fallbackScraped = await fx678.fetchCOMEX();
+          if (fallbackScraped.isNotEmpty) {
+            _applyScrapedData(base, fallbackScraped);
+            dataSource.value = 'Sina Finance (Fallback)';
+          } else {
+            dataSource.value = 'Data Unavailable';
+          }
         }
       } catch (e) {
         debugPrint('COMEX scraper error: $e');
@@ -170,6 +135,50 @@ class USComexController extends GetxController {
     } finally {
       isLoading.value = false;
       isRefreshing.value = false;
+    }
+  }
+
+  void _applyScrapedData(List<ComexMetal> base, List<ScrapedMetal> scraped) {
+    final now = DateTime.now();
+    for (int i = 0; i < base.length; i++) {
+      final match = scraped.firstWhereOrNull((s) =>
+        s.symbol.toUpperCase() == _fixedList[i].$2.toUpperCase() ||
+        s.name.toUpperCase().contains(_fixedList[i].$1.toUpperCase())
+      );
+      if (match != null) {
+        double finalChange = match.change;
+        double finalPercent = match.changePercent;
+
+        if (_sessionService != null && match.price > 0) {
+          final results = _sessionService!.calculateChange(
+            match.change,
+            match.changePercent,
+            MarketType.comex,
+            base[i].symbol,
+            match.price,
+            match.prev,
+          );
+          finalChange = results['change']!;
+          finalPercent = results['percent']!;
+          _sessionService!.updateReferencePrice(MarketType.comex, base[i].symbol, match.price);
+        }
+
+        base[i] = ComexMetal(
+          id: base[i].id,
+          symbol: base[i].symbol,
+          name: base[i].name,
+          contract: base[i].contract,
+          lastPrice: match.price == 0 ? null : match.price,
+          high: match.high == 0 ? null : match.high,
+          low: match.low == 0 ? null : match.low,
+          prevHigh: match.prevHigh == 0 ? null : match.prevHigh,
+          prevLow: match.prevLow == 0 ? null : match.prevLow,
+          change: finalChange,
+          changePercent: finalPercent,
+          lastUpdated: now,
+          category: base[i].category,
+        );
+      }
     }
   }
 

@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import '../../../data/models/notification/notification_model.dart';
 import '../../../core/services/admin_api_service.dart';
 import '../../../core/storage/local_storage.dart';
+import '../../navigation/controller/navigation_controller.dart';
+import '../../spot_price/controller/spot_price_controller.dart';
 
 class NotificationsController extends GetxController {
   final RxList<NotificationModel> _notifications = <NotificationModel>[].obs;
@@ -35,10 +37,32 @@ class NotificationsController extends GetxController {
       // 1. Load push notifications from local storage first (most recent)
       final storedNotifications = LocalStorage.getNotifications();
       for (final json in storedNotifications) {
-        final id = json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
+        // Use canonical content-based ID if available (for dedup with admin API)
+        final fcmData = json['data'];
+        String id;
+        if (fcmData is Map && fcmData['content_id'] != null && fcmData['type'] != null) {
+          id = 'content_${fcmData['type']}_${fcmData['content_id']}';
+        } else {
+          id = json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
+        }
         
         // Skip if deleted
         if (deletedIds.contains(id)) continue;
+
+        // Load navigationArgs for price alerts stored by FCM service
+        Map<String, dynamic>? navigationArgs;
+        if (json['type'] == 'priceAlert') {
+          final stored = json['navigationArgs'];
+          if (stored is Map<String, dynamic>) {
+            navigationArgs = stored;
+          } else {
+            navigationArgs = {
+              'tab': 2, // Spot tab
+              'category': 'Non-Ferrous',
+              'city': '',
+            };
+          }
+        }
 
         final notification = NotificationModel(
           id: id,
@@ -47,6 +71,7 @@ class NotificationsController extends GetxController {
           type: _getTypeFromString(json['type']),
           timestamp: DateTime.tryParse(json['timestamp'] ?? '') ?? DateTime.now(),
           isRead: json['isRead'] ?? readIds.contains(id),
+          navigationArgs: navigationArgs,
         );
         if (!seenIds.contains(notification.id)) {
           seenIds.add(notification.id);
@@ -78,7 +103,7 @@ class NotificationsController extends GetxController {
               type = NotificationType.system;
           }
 
-          final id = json['id']?.toString() ?? '';
+          final id = 'content_${json['contentType'] ?? 'unknown'}_${json['id']}';
           
           // Skip if deleted
           if (deletedIds.contains(id)) continue;
@@ -98,6 +123,57 @@ class NotificationsController extends GetxController {
         debugPrint('Loaded ${updates.length} notifications from admin API');
       }
       
+      // 3. Fetch server-side notifications (price alerts, etc.)
+      try {
+        final serverNotifications = await adminApi.getNotifications(limit: 100);
+        for (final json in serverNotifications) {
+          final id = 'server_${json['id']}';
+          if (deletedIds.contains(id) || seenIds.contains(id)) continue;
+
+          NotificationType type;
+          switch (json['type']) {
+            case 'price_alert':
+              type = NotificationType.priceAlert;
+              break;
+            default:
+              type = NotificationType.system;
+          }
+
+          // data field may be a Map (already decoded) or a JSON string
+          Map<String, dynamic> dataMap = {};
+          final rawData = json['data'];
+          if (rawData is Map<String, dynamic>) {
+            dataMap = rawData;
+          } else if (rawData is String && rawData.isNotEmpty) {
+            try {
+              final decoded = (rawData as dynamic);
+              if (decoded is Map) dataMap = Map<String, dynamic>.from(decoded);
+            } catch (_) {}
+          }
+
+          seenIds.add(id);
+          allNotifications.add(NotificationModel(
+            id: id,
+            title: json['title'] ?? '',
+            message: json['message'] ?? '',
+            type: type,
+            timestamp: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+            isRead: readIds.contains(id),
+            navigationRoute: type == NotificationType.priceAlert ? '/main' : null,
+            navigationArgs: type == NotificationType.priceAlert
+                ? {
+                    'tab': 2, // Spot tab (index 2)
+                    'category': dataMap['category'] ?? 'Non-Ferrous',
+                    'city': dataMap['city'] ?? '',
+                  }
+                : null,
+          ));
+        }
+        debugPrint('Loaded ${serverNotifications.length} notifications from server API');
+      } catch (e) {
+        debugPrint('Error fetching server notifications: $e');
+      }
+
       // Sort by timestamp descending (newest first)
       allNotifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       
@@ -237,6 +313,29 @@ class NotificationsController extends GetxController {
   void onNotificationTap(NotificationModel notification) {
     // Mark as read
     markAsRead(notification.id);
+
+    // Handle priceAlert navigation specially
+    if (notification.type == NotificationType.priceAlert) {
+      final args = notification.navigationArgs;
+      final category = args?['category']?.toString() ?? 'Non-Ferrous';
+      final city = args?['city']?.toString() ?? '';
+
+      try {
+        final navController = Get.find<NavigationController>();
+        navController.changePage(2); // Spot Tab (index 2)
+
+        if (Get.isRegistered<SpotPriceController>()) {
+          final spotController = Get.find<SpotPriceController>();
+          spotController.selectedCategory.value = category;
+          if (city.isNotEmpty && category == 'Non-Ferrous') {
+            spotController.selectedNonFerrousCity.value = city.toUpperCase();
+          }
+        }
+      } catch (e) {
+        debugPrint('Notification tap navigation error: $e');
+      }
+      return;
+    }
 
     // Navigate if route is provided
     if (notification.navigationRoute != null) {
