@@ -167,41 +167,62 @@ function parse_csv_prices($csv_data, $sheet_type) {
     
     switch ($sheet_type) {
         case 'non_ferrous':
-            $current_city = '';
-            $current_section = '';
+            if (count($lines) < 2) break;
+            $values = $lines[1]; // Row 2 contains the current prices
             
-            for ($i = 0; $i < count($lines); $i++) {
-                $row = $lines[$i];
-                if (empty($row) || count($row) === 0) continue;
-                
-                $first_cell = trim(isset($row[0]) ? $row[0] : '');
-                $upper_first = strtoupper($first_cell);
-                
-                // Detect city headers
-                if (is_city_name($upper_first)) {
-                    $current_city = $upper_first;
-                    $current_section = '';
-                    continue;
-                }
-                
-                // Detect section headers
-                if (is_section_header($first_cell)) {
-                    $current_section = clean_section_name($first_cell);
-                    continue;
-                }
-                
-                // Parse price rows
-                if (!empty($current_city) && !empty($first_cell)) {
-                    $item_name = trim($first_cell);
-                    $section_label = $current_section ? $current_section : 'General';
-                    
-                    for ($col = 1; $col < count($row); $col++) {
-                        $price_val = trim(isset($row[$col]) ? $row[$col] : '');
-                        if (!empty($price_val) && is_numeric_price($price_val)) {
-                            $col_header = isset($headers[$col]) ? trim($headers[$col]) : "Col$col";
-                            $key = "{$current_city}|{$section_label}|{$item_name}|{$col_header}";
-                            $prices[$key] = $price_val;
-                        }
+            // Map of config: [col_index, metal, subtype, city]
+            $copy_mapping = [
+                [0, 'Copper', 'Bhatti Scrap', 'Delhi'],
+                [1, 'Copper', 'Plant Scrap', 'Bhiwadi'],
+                [2, 'Copper', 'CC Rod', 'Delhi'], // CC ROD+
+                [3, 'Copper', 'CC Rod', 'Delhi'], // CC ROD
+                [4, 'Copper', 'Super D', 'Delhi'], // SUPER D+
+                [5, 'Copper', 'Super D', 'Delhi'], // SUPER D
+                [6, 'Copper', 'CCR 8mm', 'Bhiwadi'], // CCR+
+                [7, 'Copper', 'CCR 8mm', 'Delhi'], // CCR
+                [8, 'Copper', 'Zero Grade', 'Delhi'], // ZERO+
+                [9, 'Copper', 'Zero Grade', 'Delhi'], // ZERO
+                [10, 'Brass', 'Purja', 'Delhi'],
+                [11, 'Brass', 'Honey', 'Delhi'],
+                [12, 'Brass', 'Chadri', 'Delhi'],
+                [13, 'Aluminium', 'Bartan', 'Delhi'],
+                [14, 'Aluminium', 'Wire Scrap', 'Delhi'],
+                [15, 'Aluminium', 'Company Ingot', 'Delhi'],
+                [16, 'Aluminium', 'Company Rod', 'Delhi'],
+                [17, 'Aluminium', 'Local Rod', 'Delhi'],
+                [18, 'Lead', 'Hard/Soft', 'Delhi'],
+                [19, 'Lead', 'Black', 'Delhi'],
+                [20, 'Lead', 'White', 'Delhi'],
+                [21, 'Lead', 'PP Grade', 'Delhi'],
+                [22, 'Gun Metal', 'Local', 'Delhi'],
+                [23, 'Gun Metal', 'Mix', 'Delhi'],
+                [24, 'Gun Metal', 'Jalandhar', 'Delhi'],
+                [25, 'Zinc', 'India HZL', 'Delhi'],
+                [26, 'Zinc', 'Imported KZ', 'Delhi'],
+                [27, 'Zinc', 'Australia', 'Delhi'],
+                [28, 'Zinc', 'Zamak-3', 'Delhi'],
+                [29, 'Zinc', 'Zamak-5', 'Delhi'],
+                [30, 'Zinc', 'PMI', 'Delhi'],
+                [31, 'Zinc', 'Dross', 'Delhi'],
+                [32, 'Zinc', 'Tukadi (Big)', 'Delhi'],
+                [33, 'Zinc', 'Tukadi (Mix)', 'Delhi'],
+                [34, 'Zinc', 'Die Cast', 'Delhi'],
+                [35, 'Nickel', 'Russian Cathode', 'Delhi'],
+                [36, 'Nickel', 'Norway Cathode', 'Delhi'],
+                [37, 'Tin', 'Indonesia', 'Delhi'],
+            ];
+
+            foreach ($copy_mapping as $map) {
+                $idx = $map[0];
+                $metal = $map[1];
+                $subtype = $map[2];
+                $city = strtoupper($map[3]);
+
+                if ($idx < count($values)) {
+                    $price_val = trim($values[$idx]);
+                    if (!empty($price_val) && is_numeric_price($price_val)) {
+                        $key = "{$city}|{$metal}|{$subtype}";
+                        $prices[$key] = $price_val;
                     }
                 }
             }

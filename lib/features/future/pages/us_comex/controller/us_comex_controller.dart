@@ -23,8 +23,8 @@ class USComexController extends GetxController {
     ('Copper', 'HG', 'Base Metals'),
     ('Gold', 'GC', 'Precious Metals'),
     ('Silver', 'SI', 'Precious Metals'),
-    ('WTI Crude Oil', 'CL', 'Energy'),
-    ('Brent Crude Oil', 'OIL', 'Energy'),
+    ('WTI Crude Oil', 'CL', 'NYMEX'),
+    ('Natural Gas', 'OIL', 'NYMEX'),
   ];
 
   WatchlistService? _watchlistService;

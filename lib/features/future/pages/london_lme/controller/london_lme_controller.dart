@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../../../core/services/watchlist_service.dart';
 import '../../../../../core/services/scraper/fx678_scraper_service.dart';
 import '../../../../../core/services/market_session_service.dart';
+import '../../../../../core/services/google_sheets_service.dart';
 import '../../../../../data/models/watchlist/watchlist_item_model.dart';
 import '../../../../../core/utils/helpers.dart';
 
@@ -97,13 +98,22 @@ class LondonLMEController extends GetxController {
       // Try scraper — fill in prices where available
       try {
         final scraper = Get.put(FX678ScraperService());
-        final scraped = await scraper.fetchLME();
+        final sheetsService = Get.put(GoogleSheetsService());
+        
+        late List<ScrapedMetal> scraped;
+        await Future.wait([
+          scraper.fetchLME().then((data) => scraped = data),
+          sheetsService.fetchFuturesData(),
+        ]);
         if (scraped.isNotEmpty) {
           for (int i = 0; i < base.length; i++) {
             final match = scraped.firstWhereOrNull(
               (s) => s.name.toUpperCase().contains(_fixedList[i].$1.toUpperCase()) ||
                      s.symbol.toUpperCase() == _fixedList[i].$2.toUpperCase(),
             );
+            
+            final c3mData = sheetsService.lmeC3MData[base[i].symbol];
+
             if (match != null) {
               // Custom change calculation based on session time
               double finalChange = match.change;
@@ -137,6 +147,24 @@ class LondonLMEController extends GetxController {
                 prevLow: match.prevLow == 0 ? null : match.prevLow,
                 change: finalChange,
                 changePercent: finalPercent,
+                c3m: c3mData,
+                lastUpdated: now,
+                category: base[i].category,
+              );
+            } else if (c3mData != null) {
+              base[i] = LMEMetal(
+                id: base[i].id,
+                symbol: base[i].symbol,
+                name: base[i].name,
+                contract: base[i].contract,
+                lastPrice: base[i].lastPrice,
+                high: base[i].high,
+                low: base[i].low,
+                prevHigh: base[i].prevHigh,
+                prevLow: base[i].prevLow,
+                change: base[i].change,
+                changePercent: base[i].changePercent,
+                c3m: c3mData,
                 lastUpdated: now,
                 category: base[i].category,
               );
@@ -229,6 +257,7 @@ class LMEMetal {
   final double? prevLow;
   final double? change;
   final double? changePercent;
+  final double? c3m;
   final DateTime lastUpdated;
   final String category;
 
@@ -244,6 +273,7 @@ class LMEMetal {
     this.prevLow,
     required this.change,
     required this.changePercent,
+    this.c3m,
     required this.lastUpdated,
     required this.category,
   });

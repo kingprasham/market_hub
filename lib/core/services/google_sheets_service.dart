@@ -1740,6 +1740,9 @@ class GoogleSheetsService extends GetxService {
   // Futures Sheet (LME Warehouse & Settlement)
   static const String futuresSheetId = '1sOs1Hp8aPf6VjpAg9vhpY_kjxgOAgtx0ue9HbDgmvmM';
   static const String futuresSheetGid = '914913757';
+  
+  // Store C3M data separately or linked to symbol, accessible globally
+  final lmeC3MData = <String, double>{}.obs;
 
   Future<void> fetchFuturesData() async {
     // Only show loading if key futures data is missing
@@ -1761,9 +1764,19 @@ class GoogleSheetsService extends GetxService {
   }
 
   void _parseLmeWarehouseData(SheetData sheet) {
-    // Parse left side (Cols A-L, indices 0-11)
-    final data = <LmeWarehouseModel>[];
-    
+      // Parse left side (Cols A-L, indices 0-11)
+      final data = <LmeWarehouseModel>[];
+      
+      // Look for C3M data across ALL rows first (Column Z = index 25, Column AE = index 30)
+      for (final row in sheet.rows) {
+        if (row.length > 30) {
+          final rightSymbol = row[25].trim().toUpperCase();
+          if (rightSymbol.isNotEmpty && const ['CU', 'AL', 'ZN', 'PB', 'NI', 'SN', 'AA'].contains(rightSymbol)) {
+            final c3mValue = _parseSinglePrice(row[30]) ?? 0.0;
+            lmeC3MData[rightSymbol] = c3mValue;
+          }
+        }
+      }
     // Find header row starting with SYMBOL (usually row 3, index 2)
     int startRow = -1;
     for (int i = 0; i < sheet.rows.length; i++) {
@@ -1789,10 +1802,11 @@ class GoogleSheetsService extends GetxService {
         continue;
       }
 
-      // Ensure row has enough columns (up to L = index 11)
+      // Ensure row has enough columns (up to AE = index 30 for C3M)
       if (row.length < 12) continue;
 
       try {
+
         data.add(LmeWarehouseModel(
           symbol: symbol,
           last: _parseSinglePrice(row[1]) ?? 0.0,

@@ -313,7 +313,7 @@ class WatchlistScreen extends GetView<WatchlistController> {
                     if (item.lastUpdated != null) ...[
                       const SizedBox(height: 2),
                       Text(
-                        Formatters.timeAgo(item.lastUpdated!),
+                        Formatters.formatDateTime(item.lastUpdated!),
                         style: TextStyles.caption.copyWith(
                           color: ColorConstants.textSecondary,
                         ),

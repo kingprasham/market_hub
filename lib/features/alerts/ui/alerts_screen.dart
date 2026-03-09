@@ -560,7 +560,7 @@ class AlertsScreen extends GetView<AlertsController> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        Formatters.timeAgo(item.timestamp),
+                        Formatters.formatDateTime(item.timestamp),
                         style: TextStyles.caption.copyWith(
                           color: ColorConstants.textSecondary,
                         ),
@@ -904,58 +904,38 @@ class AlertsScreen extends GetView<AlertsController> {
 
   Widget _buildNewsPlaceholder(String? sourceName) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.bottomLeft,
-          end: Alignment.topRight,
-          colors: [
-            ColorConstants.primaryBlue,
-            ColorConstants.primaryBlue.withValues(alpha: 0.8),
-          ],
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -20,
-            bottom: -20,
-            child: Opacity(
-              opacity: 0.1,
-              child: const Icon(
-                Icons.newspaper_rounded,
-                size: 100,
-                color: Colors.white,
+      color: Colors.white,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/images/logo.png',
+              width: 80,
+              height: 80,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.article_rounded,
+                size: 48,
+                color: ColorConstants.primaryBlue.withValues(alpha: 0.5),
               ),
             ),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.article_rounded,
-                  size: 48,
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
-                if (sourceName != null) ...[
-                  const SizedBox(height: 8),
-                  Opacity(
-                    opacity: 0.3,
-                    child: Text(
-                      sourceName.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2,
-                      ),
-                    ),
+            if (sourceName != null) ...[
+              const SizedBox(height: 8),
+              Opacity(
+                opacity: 0.5,
+                child: Text(
+                  sourceName.toUpperCase(),
+                  style: TextStyle(
+                    color: ColorConstants.primaryBlue,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
                   ),
-                ],
-              ],
-            ),
-          ),
-        ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

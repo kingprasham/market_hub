@@ -249,7 +249,7 @@ class USComexPage extends StatelessWidget {
                               borderRadius: BorderRadius.circular(3),
                             ),
                             child: Text(
-                              'COMEX',
+                              '${metal.category == 'NYMEX' ? 'NYMEX' : 'COMEX'}',
                               style: TextStyles.caption.copyWith(
                                 color: const Color(0xFF0A3161),
                                 fontWeight: FontWeight.w600,
