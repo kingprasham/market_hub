@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/websocket_service.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/storage/local_storage.dart';
 import '../../../core/services/google_sheets_service.dart';
 import '../../../core/services/watchlist_service.dart';
 import '../../../core/services/external_apis/metals_dev_service.dart';
@@ -79,6 +80,32 @@ class SpotPriceController extends GetxController {
   final itemLastUpdated = <String, DateTime>{}.obs;
   final _priceSnapshot = <String, String>{};
 
+  void _loadPersistedCache() {
+    final cachedSnapshot = LocalStorage.getCachedData('spot_price_snapshot');
+    if (cachedSnapshot != null && cachedSnapshot is Map) {
+      _priceSnapshot.assignAll(Map<String, String>.from(cachedSnapshot));
+    }
+    
+    final cachedTimestamps = LocalStorage.getCachedData('spot_item_timestamps');
+    if (cachedTimestamps != null && cachedTimestamps is Map) {
+      cachedTimestamps.forEach((key, value) {
+        if (value is String) {
+          final dt = DateTime.tryParse(value);
+          if (dt != null) itemLastUpdated[key] = dt;
+        }
+      });
+    }
+  }
+
+  void _savePersistedCache() {
+    LocalStorage.cacheData('spot_price_snapshot', _priceSnapshot);
+    final timestampStrings = {};
+    itemLastUpdated.forEach((key, value) {
+      timestampStrings[key] = value.toIso8601String();
+    });
+    LocalStorage.cacheData('spot_item_timestamps', timestampStrings);
+  }
+
   final tabs = ['Base Metal', 'BME'];
 
   // Auto-refresh intervals (in seconds)
@@ -87,6 +114,7 @@ class SpotPriceController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _loadPersistedCache();
     _handleArguments();
     _initServices();
     fetchAllData();
@@ -148,6 +176,7 @@ class SpotPriceController extends GetxController {
           itemLastUpdated[key] = serverTime;
         }
       }
+      _savePersistedCache();
     }
   }
 
@@ -171,6 +200,7 @@ class SpotPriceController extends GetxController {
           itemLastUpdated[key] = serverTime;
         }
       }
+      _savePersistedCache();
     }
   }
 
@@ -330,6 +360,8 @@ class SpotPriceController extends GetxController {
           }
         }
       }
+      
+      _savePersistedCache();
     }
   }
   
