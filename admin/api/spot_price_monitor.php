@@ -138,7 +138,8 @@ if (!$is_cli) {
  * Fetch CSV data from a Google Sheet
  */
 function fetch_sheet_csv($sheet_id, $gid) {
-    $url = "https://docs.google.com/spreadsheets/d/{$sheet_id}/gviz/tq?tqx=out:csv&gid={$gid}";
+    $time = time();
+    $url = "https://docs.google.com/spreadsheets/d/{$sheet_id}/gviz/tq?tqx=out:csv&gid={$gid}&_cb={$time}";
     
     $context = stream_context_create([
         'http' => [
