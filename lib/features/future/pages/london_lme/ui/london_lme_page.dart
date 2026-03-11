@@ -257,6 +257,11 @@ class LondonLMEPage extends StatelessWidget {
   }
 
   Widget _buildHighLowGrid(LMEMetal metal) {
+    final c3mValue = metal.c3m ?? 0;
+    final c3mColor = c3mValue > 0 
+        ? ColorConstants.positiveGreen 
+        : (c3mValue < 0 ? ColorConstants.negativeRed : ColorConstants.textPrimary);
+
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -268,13 +273,17 @@ class LondonLMEPage extends StatelessWidget {
         children: [
           _buildInfoItem('High', metal.high != null ? '\$${metal.high!.toStringAsFixed(2)}' : '—'),
           _buildInfoItem('Low', metal.low != null ? '\$${metal.low!.toStringAsFixed(2)}' : '—'),
-          _buildInfoItem('C3M', metal.c3m != null ? '\$${metal.c3m!.toStringAsFixed(2)}' : '—'),
+          _buildInfoItem(
+            'C3M', 
+            metal.c3m != null ? '\$${metal.c3m!.toStringAsFixed(2)}' : '—',
+            valueColor: metal.c3m != null ? c3mColor : null,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoItem(String label, String value) {
+  Widget _buildInfoItem(String label, String value, {Color? valueColor}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -291,7 +300,7 @@ class LondonLMEPage extends StatelessWidget {
           style: TextStyles.caption.copyWith(
             fontSize: 10,
             fontWeight: FontWeight.w600,
-            color: ColorConstants.textPrimary,
+            color: valueColor ?? ColorConstants.textPrimary,
           ),
         ),
       ],
