@@ -167,62 +167,55 @@ function parse_csv_prices($csv_data, $sheet_type) {
     
     switch ($sheet_type) {
         case 'non_ferrous':
-            if (count($lines) < 2) break;
-            $values = $lines[1]; // Row 2 contains the current prices
-            
-            // Map of config: [col_index, metal, subtype, city]
-            $copy_mapping = [
-                [0, 'Copper', 'Bhatti Scrap', 'Delhi'],
-                [1, 'Copper', 'Plant Scrap', 'Bhiwadi'],
-                [2, 'Copper', 'CC Rod', 'Delhi'], // CC ROD+
-                [3, 'Copper', 'CC Rod', 'Delhi'], // CC ROD
-                [4, 'Copper', 'Super D', 'Delhi'], // SUPER D+
-                [5, 'Copper', 'Super D', 'Delhi'], // SUPER D
-                [6, 'Copper', 'CCR 8mm', 'Bhiwadi'], // CCR+
-                [7, 'Copper', 'CCR 8mm', 'Delhi'], // CCR
-                [8, 'Copper', 'Zero Grade', 'Delhi'], // ZERO+
-                [9, 'Copper', 'Zero Grade', 'Delhi'], // ZERO
-                [10, 'Brass', 'Purja', 'Delhi'],
-                [11, 'Brass', 'Honey', 'Delhi'],
-                [12, 'Brass', 'Chadri', 'Delhi'],
-                [13, 'Aluminium', 'Bartan', 'Delhi'],
-                [14, 'Aluminium', 'Wire Scrap', 'Delhi'],
-                [15, 'Aluminium', 'Company Ingot', 'Delhi'],
-                [16, 'Aluminium', 'Company Rod', 'Delhi'],
-                [17, 'Aluminium', 'Local Rod', 'Delhi'],
-                [18, 'Lead', 'Hard/Soft', 'Delhi'],
-                [19, 'Lead', 'Black', 'Delhi'],
-                [20, 'Lead', 'White', 'Delhi'],
-                [21, 'Lead', 'PP Grade', 'Delhi'],
-                [22, 'Gun Metal', 'Local', 'Delhi'],
-                [23, 'Gun Metal', 'Mix', 'Delhi'],
-                [24, 'Gun Metal', 'Jalandhar', 'Delhi'],
-                [25, 'Zinc', 'India HZL', 'Delhi'],
-                [26, 'Zinc', 'Imported KZ', 'Delhi'],
-                [27, 'Zinc', 'Australia', 'Delhi'],
-                [28, 'Zinc', 'Zamak-3', 'Delhi'],
-                [29, 'Zinc', 'Zamak-5', 'Delhi'],
-                [30, 'Zinc', 'PMI', 'Delhi'],
-                [31, 'Zinc', 'Dross', 'Delhi'],
-                [32, 'Zinc', 'Tukadi (Big)', 'Delhi'],
-                [33, 'Zinc', 'Tukadi (Mix)', 'Delhi'],
-                [34, 'Zinc', 'Die Cast', 'Delhi'],
-                [35, 'Nickel', 'Russian Cathode', 'Delhi'],
-                [36, 'Nickel', 'Norway Cathode', 'Delhi'],
-                [37, 'Tin', 'Indonesia', 'Delhi'],
+            // Column mapping for cities on the FOR APP sheet
+            $city_configs = [
+                'DELHI' => [0, 1], 'MUMBAI' => [4, 5], 'HYDERABAD' => [7, 8],
+                'AHMEDABAD' => [10, 11], 'PUNE' => [13, 14], 'CHENNAI' => [16, 17],
+                'JODHPUR' => [19, 20], 'KOLKATA' => [22, 23], 'JAMNAGAR' => [25, 26],
+                'JAGADHRI' => [28, 29], 'MORADABAD' => [31, 32], 'HATHRAS' => [34, 35],
+                'JALANDHAR' => [37, 38], 'BME' => [40, 41]
             ];
+            
+            // Known metal subsection headers
+            $known_metal_headers = ['COPPER', 'BRASS', 'ALUMINIUM', 'GUN METAL', 'ZINC', 'STEEL', 'NICKEL', 'TIN', 'LEAD', 'NICKEL CATHODE', 'BME MINOR METAL', 'MUMBAI MINOR METAL & FERRO'];
+            
+            // State tracking for each city's current subsection
+            $current_categories = [];
+            foreach ($city_configs as $city => $cols) {
+                $current_categories[$city] = 'General';
+            }
 
-            foreach ($copy_mapping as $map) {
-                $idx = $map[0];
-                $metal = $map[1];
-                $subtype = $map[2];
-                $city = strtoupper($map[3]);
+            // Start scanning downwards from row 1 (row 0 is just city headers)
+            for ($i = 1; $i < count($lines); $i++) {
+                $row = $lines[$i];
+                if (empty($row) || count($row) === 0) continue;
 
-                if ($idx < count($values)) {
-                    $price_val = trim($values[$idx]);
-                    if (!empty($price_val) && is_numeric_price($price_val)) {
-                        $key = "{$city}|{$metal}|{$subtype}";
-                        $prices[$key] = $price_val;
+                // Stop at bottom section if it gets strictly to row 31+ bottom sections
+                // Assuming "General" rows generally end before the bottom sections expand
+                
+                foreach ($city_configs as $city => $cols) {
+                    $name_col = $cols[0];
+                    $price1_col = $cols[1];
+                    
+                    if ($name_col < count($row)) {
+                        $rawName = trim(isset($row[$name_col]) ? $row[$name_col] : '');
+                        if (empty($rawName)) continue;
+                        
+                        $rawPrice = isset($row[$price1_col]) ? trim($row[$price1_col]) : '';
+                        $price = parse_price_number($rawPrice);
+                        
+                        $cleanName = clean_section_name($rawName);
+                        $upperName = strtoupper($cleanName);
+                        
+                        // Check if this row acts as a subsection header for this city
+                        if (in_array($upperName, $known_metal_headers) && $price === null) {
+                            $current_categories[$city] = ucwords(strtolower($cleanName));
+                        } else if ($price !== null && $price > 0) {
+                            // Valid price row
+                            $subtype = $cleanName;
+                            $cat = $current_categories[$city];
+                            $prices["{$city}|{$cat} {$subtype}"] = $rawPrice;
+                        }
                     }
                 }
             }
