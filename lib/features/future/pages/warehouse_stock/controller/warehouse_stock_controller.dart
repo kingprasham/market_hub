@@ -5,6 +5,7 @@ import '../../../../../core/services/google_sheets_service.dart';
 class WarehouseStockController extends GetxController {
   final isLoading = false.obs;
   final lmeData = <LmeWarehouseModel>[].obs;
+  final warehouseDate = ''.obs;
   final hasError = false.obs;
   final errorMessage = ''.obs;
   Timer? _refreshTimer;
@@ -16,10 +17,14 @@ class WarehouseStockController extends GetxController {
     
     // Bind the data
     lmeData.bindStream(sheetsService.lmeWarehouseData.stream);
+    warehouseDate.bindStream(sheetsService.warehouseDate.stream);
     
     // Initial sync
     if (sheetsService.lmeWarehouseData.isNotEmpty) {
       lmeData.value = sheetsService.lmeWarehouseData;
+    }
+    if (sheetsService.warehouseDate.value.isNotEmpty) {
+      warehouseDate.value = sheetsService.warehouseDate.value;
     }
     
     // Start auto-refresh

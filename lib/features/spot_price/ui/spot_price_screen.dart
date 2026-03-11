@@ -334,12 +334,12 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
               );
           }
           
-          return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: controller.ferrousPrices.length,
-              itemBuilder: (context, index) {
-                  final item = controller.ferrousPrices[index];
-                  final key = 'Ferrous|${item.category}|${item.city}';
+           return ListView.builder(
+               padding: const EdgeInsets.all(16),
+               itemCount: controller.ferrousPrices.length,
+               itemBuilder: (context, index) {
+                   final item = controller.ferrousPrices[index];
+                   final key = 'Ferrous|${item.category}|${item.city}';
                   return InkWell(
                     onTap: () {
                       MetalDetailDialog.show(
@@ -1394,6 +1394,8 @@ class SpotPriceScreen extends GetView<SpotPriceController> {
   String _getUpdatedAgo(String key) {
     final updated = controller.itemLastUpdated[key];
     if (updated == null) return 'Updated: Just now';
-    return 'Updated: ${Formatters.formatRelativeTime(updated)}';
+    final dateStr = DateFormat('dd MMM, hh:mm a').format(updated);
+    final relativeStr = Formatters.formatRelativeTime(updated);
+    return 'Updated: $dateStr ($relativeStr)';
   }
 }

@@ -36,6 +36,32 @@ class WarehouseStockPage extends StatelessWidget {
           color: ColorConstants.primaryBlue,
           child: CustomScrollView(
             slivers: [
+              // Date banner
+              if (controller.warehouseDate.value.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: ColorConstants.primaryBlue.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: ColorConstants.primaryBlue.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_today_rounded, size: 16, color: ColorConstants.primaryBlue),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Date: ${controller.warehouseDate.value}',
+                          style: TextStyles.bodySmall.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: ColorConstants.primaryBlue,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 sliver: SliverList(

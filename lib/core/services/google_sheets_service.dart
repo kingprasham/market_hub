@@ -40,7 +40,12 @@ class GoogleSheetsService extends GetxService {
 
   // Futures Data (LME Warehouse & Settlement)
   final lmeWarehouseData = <LmeWarehouseModel>[].obs;
+  final warehouseDate = ''.obs;
   final settlementData = <SettlementModel>[].obs;
+
+  // Timestamps from Apps Script
+  final sheetTimestamps = <String, DateTime>{}.obs;
+  DateTime? globalLastUpdated;
 
   // Last update time (used for cache management)
   // ignore: unused_field
@@ -282,6 +287,9 @@ class GoogleSheetsService extends GetxService {
     
     // Fetch and parse Non-Ferrous data
     await fetchNonFerrousData();
+
+    // Fetch Timestamps
+    await fetchTimestamps();
 
     // Fetch and parse Minor data
     await fetchMinorData();
@@ -1456,12 +1464,66 @@ class GoogleSheetsService extends GetxService {
 
     _priceHistory.assignAll(history);
     debugPrint('PEST parsed: $validDates dates, ${history.length} products with history');
-    for (final entry in history.entries.take(10)) {
-      debugPrint('  ${entry.key}: ${entry.value.length} data points');
-      if (entry.value.isNotEmpty) {
-        debugPrint('    Latest: ${entry.value.last.formattedDate} = ${entry.value.last.price}');
+  }
+
+  /// Fetch true timestamps from the _timestamps hidden sheet
+  Future<void> fetchTimestamps() async {
+    try {
+      // It exists in the default/Non-Ferrous sheet
+      final sheet = await _fetchSheet(nonFerrousSheetId, '_timestamps');
+      if (sheet == null) return;
+
+      final newTimestamps = <String, DateTime>{};
+
+      // Try to parse global last updated from D2 (which is row index 0 in our data rows)
+      final globalStr = sheet.getCell(0, 'Global Last Updated') ?? '';
+      if (globalStr.isNotEmpty) {
+        globalLastUpdated = _parseTimestampString(globalStr);
       }
+
+      // Read all data rows (starting from index 0)
+      for (int i = 0; i < sheet.rows.length; i++) {
+        final row = sheet.rows[i];
+        if (row.length >= 2) {
+          final sheetName = row[0].trim();
+          final timeStr = row[1].trim(); // Format: dd-MM-yyyy HH:mm:ss
+          
+          if (sheetName.isNotEmpty && timeStr.isNotEmpty) {
+            final parsedTime = _parseTimestampString(timeStr);
+            if (parsedTime != null) {
+              newTimestamps[sheetName] = parsedTime;
+            }
+          }
+        }
+      }
+      sheetTimestamps.assignAll(newTimestamps);
+      debugPrint('Timestamps parsed: ${newTimestamps.length} sheets');
+
+    } catch (e) {
+      debugPrint('Error fetching timestamps: $e');
     }
+  }
+
+  DateTime? _parseTimestampString(String timeStr) {
+    try {
+      // Expected Format from Script: dd-MM-yyyy HH:mm:ss
+      final parts = timeStr.trim().split(' ');
+      if (parts.length == 2) {
+        final dateParts = parts[0].split('-');
+        final timeParts = parts[1].split(':');
+        if (dateParts.length == 3 && timeParts.length == 3) {
+          return DateTime(
+            int.parse(dateParts[2]), // Y
+            int.parse(dateParts[1]), // M
+            int.parse(dateParts[0]), // D
+            int.parse(timeParts[0]), // h
+            int.parse(timeParts[1]), // m
+            int.parse(timeParts[2]), // s
+          );
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// Check if a PEST header matches expected pattern
@@ -1766,6 +1828,23 @@ class GoogleSheetsService extends GetxService {
   void _parseLmeWarehouseData(SheetData sheet) {
       // Parse left side (Cols A-L, indices 0-11)
       final data = <LmeWarehouseModel>[];
+
+      // Extract date from header rows
+      // The date value (e.g. "10-03-2026") can appear anywhere in the first few rows.
+      // We scan for a cell that looks like a date (dd-mm-yyyy or dd.mm.yyyy).
+      final datePattern = RegExp(r'\d{1,2}[-./\\]\d{1,2}[-./\\]\d{2,4}');
+      for (int i = 0; i < sheet.rows.length && i < 5; i++) {
+        final row = sheet.rows[i];
+        for (int j = 0; j < row.length; j++) {
+          final cell = row[j].trim();
+          final match = datePattern.firstMatch(cell);
+          if (match != null) {
+            warehouseDate.value = match.group(0) ?? cell;
+            break;
+          }
+        }
+        if (warehouseDate.value.isNotEmpty) break;
+      }
       
       // Look for C3M data across ALL rows first (Column Z = index 25, Column AE = index 30)
       for (final row in sheet.rows) {

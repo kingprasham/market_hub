@@ -145,8 +145,11 @@ class HomeController extends GetxController {
             priceStr = cp.toStringAsFixed(0);
           }
 
+          final displayName = section.sectionName.toUpperCase() == 'GENERAL'
+              ? item.name
+              : '${section.sectionName} – ${item.name}';
           current[key] = _PriceEntry(
-            name: '${section.sectionName} – ${item.name}',
+            name: displayName,
             city: city.cityName,
             category: 'Non-Ferrous',
             price: priceStr,

@@ -48,7 +48,7 @@ void main() async {
   // Initialize WatchlistService for starred/favorite items with persistence
   await Get.putAsync(() => WatchlistService().init(), permanent: true);
 
-  // Initialize core services
+  // Initialize core services 
   Get.put(WebSocketService(), permanent: true);
 
   // Initialize session manager for single device login

@@ -67,12 +67,16 @@ class NonFerrousUpdateScreen extends GetView<HomeController> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                h.name,
-                style: TextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold, color: ColorConstants.textPrimary),
+              Expanded(
+                child: Text(
+                  h.name.replaceFirst(RegExp(r'^General\s*[-–—]\s*', caseSensitive: false), ''),
+                  style: TextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold, color: ColorConstants.textPrimary),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
                 Formatters.formatRelativeTime(h.detectedAt),
                 style: TextStyles.caption.copyWith(color: ColorConstants.textHint, fontSize: 10),

@@ -132,14 +132,20 @@ class SpotPriceController extends GetxController {
       final prices = _sheetsService!.ferrousPrices[category] ?? [];
       ferrousPrices.assignAll(prices);
       
-      // Track changes
+      // Track changes using true server timestamps where available
       final now = DateTime.now();
+      final serverTime = _sheetsService!.sheetTimestamps['Iron & Steel'] ?? 
+                         _sheetsService!.globalLastUpdated ?? now;
+                         
       for (final p in prices) {
         final key = 'Ferrous|${p.category}|${p.city}';
         final priceStr = p.price.toString();
         if (_priceSnapshot[key] != priceStr) {
           _priceSnapshot[key] = priceStr;
-          itemLastUpdated[key] = now;
+          itemLastUpdated[key] = serverTime;
+        } else if (!itemLastUpdated.containsKey(key)) {
+          // If no change detected but we don't have a time, use server time
+          itemLastUpdated[key] = serverTime;
         }
       }
     }
@@ -150,14 +156,19 @@ class SpotPriceController extends GetxController {
       final prices = _sheetsService!.minorPrices[category] ?? [];
       minorPrices.assignAll(prices);
       
-      // Track changes
+      // Track changes using true server timestamps where available
       final now = DateTime.now();
+      final serverTime = _sheetsService!.sheetTimestamps['Minor and Ferro'] ?? 
+                         _sheetsService!.globalLastUpdated ?? now;
+                         
       for (final p in prices) {
         final key = 'Minor|${p.category}|${p.item}|${p.quality}';
         final priceStr = p.price;
         if (_priceSnapshot[key] != priceStr) {
           _priceSnapshot[key] = priceStr;
-          itemLastUpdated[key] = now;
+          itemLastUpdated[key] = serverTime;
+        } else if (!itemLastUpdated.containsKey(key)) {
+          itemLastUpdated[key] = serverTime;
         }
       }
     }
@@ -286,6 +297,9 @@ class SpotPriceController extends GetxController {
     final nfData = nonFerrousData.value;
     if (nfData != null) {
       final now = DateTime.now();
+      final serverTime = _sheetsService!.sheetTimestamps['COPY'] ?? 
+                         _sheetsService!.globalLastUpdated ?? now;
+                         
       for (final city in nfData.cities) {
         for (final section in city.sections) {
           for (final item in section.items) {
@@ -294,7 +308,9 @@ class SpotPriceController extends GetxController {
             final priceStr = item.displayPrice1 + (item.price2 != null ? item.displayPrice2 : '');
             if (_priceSnapshot[key] != priceStr) {
               _priceSnapshot[key] = priceStr;
-              itemLastUpdated[key] = now;
+              itemLastUpdated[key] = serverTime;
+            } else if (!itemLastUpdated.containsKey(key)) {
+              itemLastUpdated[key] = serverTime;
             }
           }
         }
@@ -308,7 +324,9 @@ class SpotPriceController extends GetxController {
           final priceStr = item.displayPrice1 + (item.price2 != null ? item.displayPrice2 : '');
           if (_priceSnapshot[key] != priceStr) {
             _priceSnapshot[key] = priceStr;
-            itemLastUpdated[key] = now;
+            itemLastUpdated[key] = serverTime;
+          } else if (!itemLastUpdated.containsKey(key)) {
+            itemLastUpdated[key] = serverTime;
           }
         }
       }
