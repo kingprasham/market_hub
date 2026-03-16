@@ -117,22 +117,41 @@ function verify_auth() {
     }
     
     // Verify token (user_id:device_token)
-    $parts = explode(':', base64_decode($token));
+    $decoded = base64_decode($token);
+    $parts = explode(':', $decoded);
     if (count($parts) !== 2) {
+        error_log("Auth Error: Malformed token parts (count=" . count($parts) . ")");
         api_error('Invalid token', 401);
     }
     
     $user_id = intval($parts[0]);
     $device_token = $parts[1];
     
+    // Verify in database
     $user = db_fetch_one(
-        "SELECT * FROM users WHERE id = ? AND device_token = ? AND status = 'approved'",
-        'is',
-        [$user_id, $device_token]
+        "SELECT * FROM users WHERE id = ? AND status = 'approved'",
+        'i',
+        [$user_id]
     );
     
     if (!$user) {
+        error_log("Auth Error: User ID $user_id not found or not approved");
         api_error('Invalid or expired session', 401);
+    }
+
+    // Verify device token with detailed mismatch check
+    if ($user['device_token'] !== $device_token) {
+        $db_token_len = strlen($user['device_token']);
+        $sent_token_len = strlen($device_token);
+        
+        error_log("Auth Error: Token mismatch for User ID $user_id. DB Len: $db_token_len, Sent Len: $sent_token_len");
+        
+        // Truncation detection
+        if ($db_token_len == 255 && $sent_token_len > 255) {
+            error_log("Auth Error: TRUNCATION DETECTED for User ID $user_id. DB token is exactly 255 chars.");
+        }
+        
+        api_error('Invalid session (token mismatch)', 401);
     }
     
     // Check plan expiry
@@ -425,38 +444,4 @@ function send_user_notification($user_id, $title, $body, $data = []) {
     }
     return false;
 }
-
-/**
- * Verify user authentication based on user ID and device token.
- * This function is assumed to be called with $conn and $device_token available in its scope.
- * @param int $user_id The ID of the user to verify.
- * @param string $device_token The device token to verify against the database.
- * @param mysqli $conn The database connection object.
- * @return array|null The user data if verification is successful, otherwise null.
- */
-function verify_auth($user_id, $device_token, $conn) {
-    // Verify in database
-    $stmt = $conn->prepare("SELECT id, status, plan_expires_at, device_token FROM users WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $user = $result->fetch_assoc();
-
-    if (!$user) {
-        error_log("Auth Error: User ID $user_id not found in DB");
-        return null;
-    }
-
-    // Verify device token
-    if ($user['device_token'] !== $device_token) {
-        error_log("Auth Error: Token mismatch for User ID $user_id. DB: " . substr($user['device_token'], 0, 20) . "... vs Sent: " . substr($device_token, 0, 20) . "...");
-        // Check if truncation happened
-        if (strlen($user['device_token']) == 255 && strlen($device_token) > 255) {
-            error_log("Auth Error: LIKELY TRUNCATION DETECTED. DB token is exactly 255 chars.");
-        }
-        return null;
-    }
-    
-    // If verification passes, return the user data
-    return $user;
-}
+?>
