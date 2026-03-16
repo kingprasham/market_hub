@@ -75,6 +75,17 @@ class RegistrationScreen extends GetView<RegistrationController> {
                 )),
                 const SizedBox(height: 20),
 
+                // Company Name
+                CustomTextField(
+                  controller: controller.companyController,
+                  label: 'Company Name (Optional)',
+                  hint: 'Enter your company name',
+                  keyboardType: TextInputType.name,
+                  textInputAction: TextInputAction.next,
+                  prefixIcon: const Icon(Icons.business_outlined),
+                ),
+                const SizedBox(height: 20),
+
                 // Email
                 CustomTextField(
                   controller: controller.emailController,

@@ -274,7 +274,7 @@ class LondonLMEPage extends StatelessWidget {
           _buildInfoItem('High', metal.high != null ? '\$${metal.high!.toStringAsFixed(2)}' : '—'),
           _buildInfoItem('Low', metal.low != null ? '\$${metal.low!.toStringAsFixed(2)}' : '—'),
           _buildInfoItem(
-            'C3M', 
+            'CASH-3M', 
             metal.c3m != null ? '\$${metal.c3m!.toStringAsFixed(2)}' : '—',
             valueColor: metal.c3m != null ? c3mColor : null,
           ),

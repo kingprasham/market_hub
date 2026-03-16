@@ -14,6 +14,7 @@ class RegistrationController extends GetxController {
   late final GlobalKey<FormState> formKey;
 
   final nameController = TextEditingController();
+  final companyController = TextEditingController();
   final whatsappController = TextEditingController();
   final phoneController = TextEditingController();
   final emailController = TextEditingController();
@@ -39,6 +40,7 @@ class RegistrationController extends GetxController {
   @override
   void onClose() {
     nameController.dispose();
+    companyController.dispose();
     whatsappController.dispose();
     phoneController.dispose();
     emailController.dispose();
@@ -213,6 +215,7 @@ class RegistrationController extends GetxController {
 
       final response = await adminApi.register(
         fullName: nameController.text.trim(),
+        companyName: companyController.text.trim(),
         email: emailController.text.trim(),
         phone: '${phoneCountryCode.value}${phoneController.text.trim()}',
         pin: pincodeController.text.trim(),

@@ -113,6 +113,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <p class="mb-0 fw-bold"><?= e($user['full_name']) ?></p>
                     </div>
                     <div class="col-md-6 mb-3">
+                        <label class="text-muted small">Company Name</label>
+                        <p class="mb-0"><?= e($user['company_name']) ?: '<i class="text-muted">Not specified</i>' ?></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
                         <label class="text-muted small">Email</label>
                         <p class="mb-0">
                             <?= e($user['email']) ?>

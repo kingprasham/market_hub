@@ -46,6 +46,7 @@ try {
 
     // Validate
     $full_name = trim($data['full_name'] ?? '');
+    $company_name = trim($data['company_name'] ?? '');
     $email = trim(strtolower($data['email'] ?? ''));
     $phone = trim($data['phone'] ?? '');
     $whatsapp = trim($data['whatsapp'] ?? '');
@@ -86,10 +87,10 @@ try {
     $pin_hash = hash_pin($pin);
 
     $user_id = db_insert(
-        "INSERT INTO users (full_name, email, phone, whatsapp, plan_id, visiting_card, fcm_token, pin_hash, plain_pin, email_verified, status) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'pending')",
-        'ssssissss',
-        [$full_name, $email, $phone, $whatsapp, $plan_id_value, $visiting_card_path, $fcm_token, $pin_hash, $pin]
+        "INSERT INTO users (full_name, company_name, email, phone, whatsapp, plan_id, visiting_card, fcm_token, pin_hash, plain_pin, email_verified, status) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'pending')",
+        'sssssissss',
+        [$full_name, $company_name, $email, $phone, $whatsapp, $plan_id_value, $visiting_card_path, $fcm_token, $pin_hash, $pin]
     );
 
     if (!$user_id) throw new Exception('Database insert returned no ID');

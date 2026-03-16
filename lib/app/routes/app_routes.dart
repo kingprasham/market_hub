@@ -22,6 +22,7 @@ abstract class AppRoutes {
   static const referenceRate = '/future/reference-rate';
   static const warehouseStock = '/future/stock';
   static const settlement = '/future/settlement';
+  static const settlementChart = '/future/settlement-chart';
 
   // Forex Routes
   static const forex = '/forex';

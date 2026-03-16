@@ -133,6 +133,9 @@ $plans = db_fetch_all("SELECT * FROM plans WHERE is_active = 1 ORDER BY price");
                         <td><?= $user['id'] ?></td>
                         <td>
                             <strong><?= e($user['full_name']) ?></strong>
+                            <?php if (!empty($user['company_name'])): ?>
+                            <br><small class="text-muted"><i class="bi bi-building"></i> <?= e($user['company_name']) ?></small>
+                            <?php endif; ?>
                             <?php if ($user['visiting_card']): ?>
                             <br><small class="text-muted"><i class="bi bi-image"></i> Card uploaded</small>
                             <?php endif; ?>

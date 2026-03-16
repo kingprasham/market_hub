@@ -28,6 +28,7 @@ class ApiConstants {
   static const String adminVerifyResetOtp = 'verify-reset-otp.php';
   static const String adminResetPin = 'reset-pin.php';
   static const String adminUpdateProfile = 'update-profile.php';
+  static const String adminHistoricalPrices = 'historical_prices.php';
   
   // Price Alerts
   static const String adminGetPriceAlerts = 'get-price-alerts.php';

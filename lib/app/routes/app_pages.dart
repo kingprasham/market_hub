@@ -106,6 +106,7 @@ import '../../features/home/ui/all_updates_page.dart';
 import '../../features/home/ui/ad_detail_screen.dart';
 import '../../features/home/ui/update_detail_screen.dart';
 import '../../features/home/ui/non_ferrous_update_screen.dart';
+import '../../features/future/pages/settlement/ui/settlement_chart_page.dart';
 
 class AppPages {
   static final routes = [
@@ -423,6 +424,13 @@ class AppPages {
       name: AppRoutes.nonFerrousUpdates,
       page: () => const NonFerrousUpdateScreen(),
       transition: Transition.rightToLeft,
+    ),
+    // Settlement Chart
+    GetPage(
+      name: AppRoutes.settlementChart,
+      page: () => const SettlementChartPage(),
+      binding: FutureBinding(),
+      transition: Transition.cupertino,
     ),
   ];
 }
