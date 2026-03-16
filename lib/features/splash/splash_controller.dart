@@ -23,11 +23,16 @@ class SplashController extends GetxController {
       // Check if first launch
       // Check if user is logged in (has stored user data)
       final user = LocalStorage.getUser();
-      if (user != null) {
-        debugPrint('SplashController: User found, going to login (PIN)');
+      final token = await LocalStorage.getAuthToken();
+      
+      if (user != null && token != null && token.isNotEmpty) {
+        debugPrint('SplashController: Valid token found, bypassing login completely');
+        Get.offAllNamed(AppRoutes.main);
+      } else if (user != null) {
+        debugPrint('SplashController: User found but no token, going to login (PIN)');
         Get.offAllNamed(AppRoutes.login);
       } else {
-        debugPrint('SplashController: No user found, going to login (default per user request)');
+        debugPrint('SplashController: No user found, going to login');
         Get.offAllNamed(AppRoutes.login);
       }
       return;

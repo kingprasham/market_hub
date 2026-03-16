@@ -75,19 +75,21 @@ class MetalDetailDialog extends StatelessWidget {
             valueColor: isPositive ? ColorConstants.positiveGreen : ColorConstants.negativeRed,
             isBold: true,
           ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              const Icon(Icons.access_time, size: 14, color: ColorConstants.textHint),
-              const SizedBox(width: 8),
-              Text(
-                'Last Trade: ${lastTrade ?? '--'}',
-                style: TextStyles.caption.copyWith(
-                  color: ColorConstants.textHint,
+          if (lastTrade != null && lastTrade!.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Icon(Icons.access_time, size: 14, color: ColorConstants.textHint),
+                const SizedBox(width: 8),
+                Text(
+                  'Last Trade: ${lastTrade ?? '--'}',
+                  style: TextStyles.caption.copyWith(
+                    color: ColorConstants.textHint,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,

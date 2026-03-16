@@ -4,6 +4,7 @@ import '../../../../../core/constants/color_constants.dart';
 import '../../../../../core/constants/text_styles.dart';
 import '../../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../controller/settlement_controller.dart';
+import '../../../../../app/routes/app_routes.dart';
 import '../../../../../shared/widgets/common/metal_detail_dialog.dart';
 import 'package:intl/intl.dart';
 
@@ -96,13 +97,9 @@ class SettlementPage extends StatelessWidget {
   Widget _buildSettlementCard(BuildContext context, dynamic item) {
     return InkWell(
       onTap: () {
-        MetalDetailDialog.show(
-          context,
-          title: '${item.metal} Settlement',
-          lastPrice: 'Cash: \$${item.bidCash.toStringAsFixed(0)}/\$${item.askCash.toStringAsFixed(0)}',
-          high: '3M: \$${item.bid3M.toStringAsFixed(0)}',
-          low: '3M: \$${item.ask3M.toStringAsFixed(0)}',
-          lastTrade: DateFormat('dd MMM hh:mma').format(DateTime.now()).toLowerCase(),
+        Get.toNamed(
+          AppRoutes.settlementChart, 
+          arguments: {'metalName': item.metal},
         );
       },
       child: Container(
@@ -215,7 +212,7 @@ class SettlementPage extends StatelessWidget {
   }
 
   Widget _buildPriceRow(String label, double value) {
-    final displayValue = value > 0 ? value.toStringAsFixed(0) : '-';
+    final displayValue = value > 0 ? value.toStringAsFixed(2) : '-';
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [

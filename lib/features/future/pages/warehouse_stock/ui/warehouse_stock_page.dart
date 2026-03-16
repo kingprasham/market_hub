@@ -152,7 +152,6 @@ class WarehouseStockPage extends StatelessWidget {
           low: 'Out: ${item.outStock.toStringAsFixed(0)}',
           change: 'Daily: ${item.change > 0 ? '+' : ''}${item.change.toStringAsFixed(0)} (${item.chnPercent})',
           isPositive: item.change >= 0,
-          lastTrade: DateFormat('dd MMM hh:mma').format(DateTime.now()).toLowerCase(),
         );
       },
       child: Container(
@@ -204,7 +203,7 @@ class WarehouseStockPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Last Price',
+                          'Open Stock',
                           style: TextStyle(fontSize: 10, color: Colors.grey),
                         ),
                         Text(

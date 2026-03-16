@@ -426,3 +426,37 @@ function send_user_notification($user_id, $title, $body, $data = []) {
     return false;
 }
 
+/**
+ * Verify user authentication based on user ID and device token.
+ * This function is assumed to be called with $conn and $device_token available in its scope.
+ * @param int $user_id The ID of the user to verify.
+ * @param string $device_token The device token to verify against the database.
+ * @param mysqli $conn The database connection object.
+ * @return array|null The user data if verification is successful, otherwise null.
+ */
+function verify_auth($user_id, $device_token, $conn) {
+    // Verify in database
+    $stmt = $conn->prepare("SELECT id, status, plan_expires_at, device_token FROM users WHERE id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+
+    if (!$user) {
+        error_log("Auth Error: User ID $user_id not found in DB");
+        return null;
+    }
+
+    // Verify device token
+    if ($user['device_token'] !== $device_token) {
+        error_log("Auth Error: Token mismatch for User ID $user_id. DB: " . substr($user['device_token'], 0, 20) . "... vs Sent: " . substr($device_token, 0, 20) . "...");
+        // Check if truncation happened
+        if (strlen($user['device_token']) == 255 && strlen($device_token) > 255) {
+            error_log("Auth Error: LIKELY TRUNCATION DETECTED. DB token is exactly 255 chars.");
+        }
+        return null;
+    }
+    
+    // If verification passes, return the user data
+    return $user;
+}

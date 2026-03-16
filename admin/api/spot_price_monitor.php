@@ -24,6 +24,13 @@ if (!$is_cli) {
 }
 
 define('ADMIN_PANEL', true);
+
+// Manually set headers because config.php skips them when ADMIN_PANEL is defined
+if (php_sapi_name() !== 'cli') {
+    header('Access-Control-Allow-Origin: *');
+    header('Content-Type: application/json; charset=utf-8');
+}
+
 require_once __DIR__ . '/config.php';
 
 // ─── Configuration ───────────────────────────────────────────────
@@ -33,19 +40,28 @@ $LOG_FILE = __DIR__ . '/spot_monitor.log';
 // Google Sheet IDs (same as in Flutter app)
 $SHEETS_TO_MONITOR = [
     'non_ferrous' => [
-        'id'   => '1VrCzC-sDcri5hO_TWfpHGx3ua7iaScLAtf-CFwQYBsI',
-        'gid'  => '365100361',
+        'id'    => '1VrCzC-sDcri5hO_TWfpHGx3ua7iaScLAtf-CFwQYBsI',
+        'gid'   => '365100361',
         'label' => 'Non-Ferrous',
+        'type'  => 'non_ferrous'
     ],
     'ferrous' => [
-        'id'   => '1MGL9LrQn0M3WiHZYWnuGNukgqglezk3zWkzak2OXwg4',
-        'gid'  => '0',
+        'id'    => '1MGL9LrQn0M3WiHZYWnuGNukgqglezk3zWkzak2OXwg4',
+        'gid'   => '0',
         'label' => 'Steel',
+        'type'  => 'key_value'
     ],
     'minor' => [
-        'id'   => '1sOs1Hp8aPf6VjpAg9vhpY_kjxgOAgtx0ue9HbDgmvmM',
-        'gid'  => '1353908069',
+        'id'    => '1sOs1Hp8aPf6VjpAg9vhpY_kjxgOAgtx0ue9HbDgmvmM',
+        'gid'   => '1353908069',
         'label' => 'Minor and Ferro',
+        'type'  => 'key_value'
+    ],
+    'app_tab' => [
+        'id'    => '1sOs1Hp8aPf6VjpAg9vhpY_kjxgOAgtx0ue9HbDgmvmM',
+        'gid'   => '914913757',
+        'label' => 'App Update',
+        'type'  => 'app_unified'
     ],
 ];
 
@@ -91,7 +107,7 @@ foreach ($SHEETS_TO_MONITOR as $key => $sheet_config) {
         continue;
     }
     
-    $current_prices = parse_csv_prices($csv_data, $key);
+    $current_prices = parse_csv_prices($csv_data, $sheet_config['type']);
     $log_func("  Parsed " . count($current_prices) . " price entries.");
     
     // Compare with cached prices
@@ -191,9 +207,6 @@ function parse_csv_prices($csv_data, $sheet_type) {
                 $row = $lines[$i];
                 if (empty($row) || count($row) === 0) continue;
 
-                // Stop at bottom section if it gets strictly to row 31+ bottom sections
-                // Assuming "General" rows generally end before the bottom sections expand
-                
                 foreach ($city_configs as $city => $cols) {
                     $name_col = $cols[0];
                     $price1_col = $cols[1];
@@ -209,7 +222,7 @@ function parse_csv_prices($csv_data, $sheet_type) {
                         $upperName = strtoupper($cleanName);
                         
                         // Check if this row acts as a subsection header for this city
-                        if (in_array($upperName, $known_metal_headers) && $price === null) {
+                        if (in_array($upperName, $known_metal_headers) && ($price === null || $price === 0)) {
                             $current_categories[$city] = ucwords(strtolower($cleanName));
                         } else if ($price !== null && $price > 0) {
                             // Valid price row
@@ -222,8 +235,7 @@ function parse_csv_prices($csv_data, $sheet_type) {
             }
             break;
             
-        case 'ferrous':
-        case 'minor':
+        case 'key_value':
             for ($i = 1; $i < count($lines); $i++) {
                 $row = $lines[$i];
                 if (empty($row) || count($row) === 0) continue;
@@ -237,6 +249,72 @@ function parse_csv_prices($csv_data, $sheet_type) {
                         $header = trim(isset($headers[$col]) ? $headers[$col] : "Col$col");
                         $key = "{$first_cell}|{$header}";
                         $prices[$key] = $price_val;
+                    }
+                }
+            }
+            break;
+
+        case 'forex':
+            // GID 0 in 1sOs... sheet
+            // Rows are generally stable. We'll look for SBI and RBI rows.
+            foreach ($lines as $row) {
+                if (count($row) < 5) continue;
+                $first = strtoupper(trim($row[0]));
+                if (strpos($first, 'SBI') !== false) {
+                    $prices['Forex|SBI USD'] = $row[1];
+                    $prices['Forex|SBI EUR'] = $row[2];
+                    $prices['Forex|SBI GBP'] = $row[3];
+                    $prices['Forex|SBI JPY'] = $row[4];
+                } else if (strpos($first, 'RBI') !== false) {
+                    $prices['Forex|RBI USD'] = $row[1];
+                    $prices['Forex|RBI GBP'] = $row[2];
+                    $prices['Forex|RBI EUR'] = $row[3];
+                    $prices['Forex|RBI JPY'] = $row[4];
+                }
+            }
+            break;
+
+        case 'app_unified':
+            // GID 914913757 in 1sOs... sheet
+            // This tab contains Warehouse (A-E), Settlement (N-S), and RBI/SBI (U-X)
+            for ($i = 0; $i < count($lines); $i++) {
+                $row = $lines[$i];
+                if (empty($row)) continue;
+
+                // 1. Warehouse section (Left side, Columns A-G)
+                if (count($row) >= 5) {
+                    $symbol = strtoupper(trim($row[0])); // Col A
+                    if (in_array($symbol, ['COPPER', 'ALUMINIUM', 'ZINC', 'NICKEL', 'LEAD', 'TIN', 'AL. ALLOY', 'NASAAC', 'COBALT', 'CU', 'AL', 'ZN', 'PB', 'NI', 'SN', 'AA'])) {
+                        $prices["Warehouse|{$symbol} MT"] = trim($row[1]);     // Col B
+                        $prices["Warehouse|{$symbol} Change"] = trim($row[4]); // Col E
+                    }
+                }
+
+                // 2. Settlement section (Middle-Right, Columns O-R / 14-17)
+                if (count($row) >= 16) {
+                    $metal = strtoupper(trim($row[14])); // Col O
+                    if (in_array($metal, ['COPPER', 'TIN', 'LEAD', 'ZINC', 'ALUMINIUM', 'NICKEL', 'AL. ALLOY', 'NASAAC', 'COBALT'])) {
+                        $prices["Settlement|{$metal} Bid"] = trim($row[15]); // Col P
+                        $prices["Settlement|{$metal} 3M"] = trim($row[17]);  // Col R
+                    }
+                }
+
+                // 3. Forex section (Far Right, Columns U-X / 20-23)
+                // Layout: Row i: "SBI", Row i+1: "USD/INR"..., Row i+2: Prces
+                if (count($row) >= 21) {
+                    $label = strtoupper(trim($row[20])); // Col U
+                    if ($label === 'SBI' && isset($lines[$i+2]) && count($lines[$i+2]) >= 21) {
+                        $p_row = $lines[$i+2];
+                        $prices['Forex|SBI USD'] = trim($p_row[20]); // Col U
+                        $prices['Forex|SBI EUR'] = trim($p_row[21]); // Col V
+                        $prices['Forex|SBI GBP'] = trim($p_row[22]); // Col W
+                        $prices['Forex|SBI JPY'] = trim($p_row[23]); // Col X
+                    } else if ($label === 'RBI' && isset($lines[$i+2]) && count($lines[$i+2]) >= 21) {
+                        $p_row = $lines[$i+2];
+                        $prices['Forex|RBI USD'] = trim($p_row[20]); // Col U
+                        $prices['Forex|RBI GBP'] = trim($p_row[21]); // Col V
+                        $prices['Forex|RBI EUR'] = trim($p_row[22]); // Col W
+                        $prices['Forex|RBI JPY'] = trim($p_row[23]); // Col X
                     }
                 }
             }
@@ -317,12 +395,23 @@ function detect_changes($old_prices, $new_prices, $category_label) {
             $old_num = parse_price_number($old_val);
             $new_num = parse_price_number($new_val);
             
-            if ($old_num !== null && $new_num !== null && $old_num !== $new_num) {
+            // Round to 2 decimal places to avoid noise
+            if ($old_num !== null && $new_num !== null && round($old_num, 2) !== round($new_num, 2)) {
                 $parts = explode('|', $key);
+                $city = isset($parts[0]) ? $parts[0] : '';
+                
+                // --- CATEGORY OVERRIDE ---
+                // If it's a unified tab, the initial category might be generic (like 'LME Futures')
+                // We override it based on the key prefix (Settlement, Warehouse, Forex)
+                $override_label = $category_label;
+                if ($city === 'Settlement') $override_label = 'LME Settlement';
+                if ($city === 'Warehouse') $override_label = 'LME Warehouse';
+                if ($city === 'Forex') $override_label = 'Forex';
+                
                 $changes[] = [
                     'key'       => $key,
-                    'category'  => $category_label,
-                    'city'      => isset($parts[0]) ? $parts[0] : '',
+                    'category'  => $override_label,
+                    'city'      => $city,
                     'item'      => implode(' ', array_slice($parts, 1)),
                     'old_price' => $old_val,
                     'new_price' => $new_val,
@@ -336,145 +425,143 @@ function detect_changes($old_prices, $new_prices, $category_label) {
 }
 
 /**
- * Check if a string looks like a city name
- */
-function is_city_name($str) {
-    $cities = ['DELHI', 'MUMBAI', 'CHENNAI', 'KOLKATA', 'JAMNAGAR', 'BHIWADI', 
-               'MORADABAD', 'AHMEDABAD', 'JAIPUR', 'HYDERABAD'];
-    $clean = strtoupper(trim(str_replace('*', '', $str)));
-    return in_array($clean, $cities);
-}
-
-/**
- * Check if a cell is a section header
- */
-function is_section_header($cell) {
-    $clean = strtoupper(trim(str_replace('*', '', $cell)));
-    $keywords = ['COPPER', 'BRASS', 'ALUMINIUM', 'ALUMINUM', 'ZINC', 'LEAD', 
-                 'NICKEL', 'TIN', 'GUN METAL', 'SCRAP'];
-    foreach ($keywords as $kw) {
-        if (strpos($clean, $kw) !== false) return true;
-    }
-    return false;
-}
-
-/**
- * Clean up section header names
- */
-function clean_section_name($name) {
-    return trim(str_replace('*', '', $name));
-}
-
-/**
- * Check if a string looks like a numeric price
- */
-function is_numeric_price($str) {
-    $cleaned = str_replace([',', ' ', '₹', 'Rs', '+', '-'], '', trim($str));
-    return is_numeric($cleaned);
-}
-
-/**
- * Parse a price string to a float
- */
-function parse_price_number($str) {
-    $cleaned = str_replace([',', ' ', '₹', 'Rs', '+'], '', trim($str));
-    // Handle "123/456" format → take first number
-    if (strpos($cleaned, '/') !== false) {
-        $parts = explode('/', $cleaned);
-        $cleaned = $parts[0];
-    }
-    return is_numeric($cleaned) ? floatval($cleaned) : null;
-}
-
-/**
- * Ensure the notifications table exists
- */
-function ensure_notifications_table() {
-    $sql = "CREATE TABLE IF NOT EXISTS notifications (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        type VARCHAR(50) NOT NULL DEFAULT 'price_alert',
-        title VARCHAR(255) NOT NULL,
-        message TEXT,
-        data TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_type (type),
-        INDEX idx_created (created_at)
-    )";
-    
-    db_query($sql);
-}
-
-/**
- * Send spot price change notification to all users
+ * Send change notification to all users
  */
 function send_spot_price_notification($changes) {
     if (empty($changes)) return ['sent' => 0, 'failed' => 0];
     
-    // Group changes by city for a cleaner notification
-    $by_city = [];
+    // Group changes by category (Non-Ferrous, Steel, Forex, etc.)
+    $by_category = [];
     foreach ($changes as $change) {
-        $city = $change['city'] ? $change['city'] : 'Market';
-        if (!isset($by_city[$city])) $by_city[$city] = [];
-        $by_city[$city][] = $change;
+        $cat = $change['category'];
+        if (!isset($by_category[$cat])) $by_category[$cat] = [];
+        $by_category[$cat][] = $change;
     }
     
-    // Build notification content
-    $title = '📊 Spot Price Update';
+    $results = ['sent' => 0, 'failed' => 0];
     
-    $body_parts = [];
-    $first_city = '';
-    $first_category = '';
-    
-    foreach ($by_city as $city => $city_changes) {
-        if (empty($first_city)) {
-            $first_city = $city;
-            $first_category = isset($city_changes[0]['category']) ? $city_changes[0]['category'] : 'Non-Ferrous';
+    foreach ($by_category as $cat_label => $cat_changes) {
+        // If there are many changes in one category, it's likely a bulk update or noise
+        // But if it's just a few, it's more relevant
+        
+        $title = "📊 {$cat_label} Update";
+        $body_parts = [];
+        
+        // Group by city within category (if applicable)
+        $by_city = [];
+        foreach ($cat_changes as $c) {
+            $city = $c['city'] ? $c['city'] : 'Market';
+            if (!isset($by_city[$city])) $by_city[$city] = [];
+            $by_city[$city][] = $c;
         }
         
-        $count = count($city_changes);
-        $details = [];
-        $shown = array_slice($city_changes, 0, 2);
-        foreach ($shown as $c) {
-            $arrow = $c['direction'] === 'up' ? '↑' : '↓';
-            $item_parts = explode('|', $c['item']);
-            $item_short = trim(isset($item_parts[0]) ? $item_parts[0] : $c['item']);
-            $details[] = "{$item_short}: ₹{$c['old_price']} → ₹{$c['new_price']} {$arrow}";
+        foreach ($by_city as $city => $city_changes) {
+            $count = count($city_changes);
+            
+            // If user only changed one thing (like Lead), count will be 1
+            // We want to show the specific item clearly
+            $details = [];
+             foreach ($city_changes as $ch) {
+                $arrow = $ch['direction'] === 'up' ? '↑' : '↓';
+                // Choose symbol based on category
+                $symbol = '₹';
+                if ($cat === 'Settlement' || $cat === 'Warehouse') {
+                    $symbol = '$';
+                }
+                
+                // Format prices to 2 decimals
+                $old_fmt = number_format($ch['old_price'], 2);
+                $new_fmt = number_format($ch['new_price'], 2);
+                
+                // Clean item name
+                $item_display = trim(str_replace($city, '', $ch['item']));
+                $details[] = "{$item_display}: {$symbol}{$old_fmt} → {$symbol}{$new_fmt} {$arrow}";
+            }
+            
+            $city_display = ($city !== 'Market' && $city !== 'Forex' && $city !== 'Settlement' && $city !== 'Warehouse') ? ucfirst(strtolower($city)) . ": " : "";
+            $body_parts[] = $city_display . implode(', ', $details);
         }
         
-        $city_display = ucfirst(strtolower($city));
-        if ($count > 2) {
-            $details[] = "+" . ($count - 2) . " more";
+        // Final body construction
+        // If we have many cities/items, we might needs to truncate
+        $body = implode(' | ', $body_parts);
+        if (strlen($body) > 180) {
+            $body = substr($body, 0, 177) . '...';
         }
-        $body_parts[] = "{$city_display}: " . implode(', ', $details);
+        
+        // FCM data payload for deep-linking
+        $first_change = $cat_changes[0];
+        $type = 'price_alert';
+        if ($cat_label === 'Forex') $type = 'forex_update';
+        if ($cat_label === 'LME Futures') $type = 'futures_update';
+        
+        $data = [
+            'type'         => $type,
+            'category'     => $cat_label,
+            'city'         => $first_change['city'],
+            'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+        ];
+        
+        // Store in DB
+        try {
+            $changes_json = json_encode($cat_changes);
+            db_insert(
+                "INSERT INTO notifications (type, title, message, data) VALUES (?, ?, ?, ?)",
+                'ssss',
+                [$type, $title, $body, $changes_json]
+            );
+        } catch (Exception $e) {
+            error_log("Failed to store notification: " . $e->getMessage());
+        }
+        
+        // Send push to all
+        $res = send_push_to_all($title, $body, $data);
+        $results['sent'] += $res['sent'];
+        $results['failed'] += $res['failed'];
     }
     
-    $body_shown = array_slice($body_parts, 0, 3);
-    $body = implode(' | ', $body_shown);
-    if (count($body_parts) > 3) {
-        $body .= ' | +' . (count($body_parts) - 3) . ' more cities';
-    }
-    
-    // FCM data payload for deep-linking
-    $data = [
-        'type'     => 'price_alert',
-        'category' => $first_category,
-        'city'     => $first_city,
-        'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-    ];
-    
-    // Store notification in DB
-    try {
-        $changes_json = json_encode($changes);
-        db_insert(
-            "INSERT INTO notifications (type, title, message, data) VALUES (?, ?, ?, ?)",
-            'ssss',
-            ['price_alert', $title, $body, $changes_json]
-        );
-    } catch (Exception $e) {
-        error_log("Failed to store notification: " . $e->getMessage());
-    }
-    
-    // Send FCM to all users
-    return send_push_to_all($title, $body, $data);
+    return $results;
 }
+/**
+ * Ensure the notifications table exists and has required columns
+ */
+function ensure_notifications_table() {
+    // Create notifications table if it doesn't exist
+    db_query("CREATE TABLE IF NOT EXISTS notifications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        type VARCHAR(50) NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        data JSON DEFAULT NULL,
+        read_status TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+}
+
+/**
+ * Clean section names for better categorization
+ */
+function clean_section_name($name) {
+    return trim(str_replace([':', '*'], '', $name));
+}
+
+/**
+ * Check if a string is a numeric price
+ */
+function is_numeric_price($str) {
+    if (empty($str)) return false;
+    $clean = str_replace([',', ' '], '', $str);
+    return is_numeric($clean);
+}
+
+/**
+ * Parse price string to float
+ */
+function parse_price_number($str) {
+    if (empty($str)) return null;
+    $clean = str_replace([',', ' '], '', $str);
+    if (is_numeric($clean)) return floatval($clean);
+    return null;
+}
+
 ?>

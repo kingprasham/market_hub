@@ -58,9 +58,35 @@ class AdminApiService extends GetxService {
           debugPrint('Error saving user to local storage: $e');
         }
       }
+    } on DioException catch (e) {
+      debugPrint('Failed to load profile: ${e.message}');
+      
+      // ONLY logout if it's a 401 (Unauthorized) or 403 (Forbidden)
+      // This ensures that network errors don't blow away the session
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        debugPrint('CRITICAL AUTH ERROR (HTTP ${e.response?.statusCode}): Token invalid or expired. Cleaning up session.');
+        await logout();
+      } else {
+        debugPrint('TRANSIENT NETWORK/SERVER ERROR (HTTP ${e.response?.statusCode}): Keeping existing session.');
+        
+        // Ensure we still have a user object in memory even if API fails
+        if (currentUser.value == null) {
+          final savedUser = LocalStorage.getUser();
+          if (savedUser != null) {
+            currentUser.value = {
+              'id': savedUser.id,
+              'full_name': savedUser.fullName,
+              'email': savedUser.email,
+              'phone': savedUser.phoneNumber,
+              'status': savedUser.isApproved ? 'approved' : 'pending',
+            };
+          }
+        }
+        isLoggedIn.value = true;
+      }
     } catch (e) {
-      debugPrint('Failed to load profile: $e');
-      await logout();
+      debugPrint('Unexpected error loading profile: $e');
+      // For general unexpected errors, we play it safe and stay current
     }
   }
 
@@ -100,6 +126,7 @@ class AdminApiService extends GetxService {
   /// Register new user
   Future<Map<String, dynamic>> register({
     required String fullName,
+    String? companyName,
     required String email,
     required String phone,
     required String pin,
@@ -127,6 +154,7 @@ class AdminApiService extends GetxService {
       
       final Map<String, dynamic> formFields = {
         'full_name': fullName,
+        if (companyName != null && companyName.isNotEmpty) 'company_name': companyName,
         'email': email,
         'phone': phone,
         'pin': pin,
@@ -668,6 +696,31 @@ class AdminApiService extends GetxService {
       return [];
     } catch (e) {
       debugPrint('Failed to get notifications: $e');
+      return [];
+    }
+  }
+
+  /// Get historical prices for a metal from WestMetall scraper
+  Future<List<Map<String, dynamic>>> getHistoricalPrices({String? metal, String? field}) async {
+    try {
+      final response = await _dio.get(
+        ApiConstants.adminHistoricalPrices,
+        queryParameters: {
+          if (metal != null) 'metal': metal,
+          if (field != null) 'field': field,
+        },
+      );
+
+      final data = response.data is String
+          ? jsonDecode(response.data)
+          : response.data;
+
+      if (data['success'] == true) {
+        return List<Map<String, dynamic>>.from(data['data'] ?? []);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Failed to get historical prices: $e');
       return [];
     }
   }
