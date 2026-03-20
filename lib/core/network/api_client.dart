@@ -209,9 +209,10 @@ class _AuthInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     if (err.response?.statusCode == 401) {
-      // Token expired, logout user
-      LocalStorage.logout();
-      // Navigate to login - handled by the app
+      // Token expired - only clear the token, NOT the full user session.
+      // Full logout wipes user data from Hive, causing the splash screen
+      // to redirect to login instead of main on next app start.
+      LocalStorage.deleteAuthToken();
     }
     handler.next(err);
   }

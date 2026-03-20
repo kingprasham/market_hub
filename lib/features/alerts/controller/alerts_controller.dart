@@ -34,7 +34,8 @@ class AlertsController extends GetxController {
   StreamSubscription? _wsSubscription;
   Timer? _autoRefreshTimer;
 
-  final tabs = ['Live Feed', 'News', 'Hindi', 'Circular', 'Calendar'];
+  // Live Feed tab commented out per user request
+  final tabs = ['News', 'Hindi', 'Circular', 'Calendar'];
 
   // Auto-refresh intervals (in seconds)
   static const int liveFeedInterval = 30; // 30 seconds for live feed
@@ -369,11 +370,10 @@ class AlertsController extends GetxController {
 
   List<NewsModel> getCurrentTabItems() {
     switch (selectedTabIndex.value) {
-      case 0: return liveFeed;
-      case 1: return news;
-      case 2: return hindiNews;
-      case 3: return circulars;
-      case 4: return economicEvents;
+      case 0: return news;
+      case 1: return hindiNews;
+      case 2: return circulars;
+      case 3: return economicEvents;
       default: return [];
     }
   }

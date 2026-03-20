@@ -165,8 +165,10 @@ class SpotPriceController extends GetxController {
       final serverTime = _sheetsService!.sheetTimestamps['Iron & Steel'] ?? 
                          _sheetsService!.globalLastUpdated ?? now;
                          
+      final currentKeys = <String>{};
       for (final p in prices) {
         final key = 'Ferrous|${p.category}|${p.city}';
+        currentKeys.add(key);
         final priceStr = p.price.toString();
         if (_priceSnapshot[key] != priceStr) {
           _priceSnapshot[key] = priceStr;
@@ -176,6 +178,8 @@ class SpotPriceController extends GetxController {
           itemLastUpdated[key] = serverTime;
         }
       }
+      // Cleanup stale keys so if a cell is blanked and re-entered, it registers as a change
+      _priceSnapshot.removeWhere((key, value) => key.startsWith('Ferrous|') && !currentKeys.contains(key));
       _savePersistedCache();
     }
   }
@@ -190,8 +194,10 @@ class SpotPriceController extends GetxController {
       final serverTime = _sheetsService!.sheetTimestamps['Minor and Ferro'] ?? 
                          _sheetsService!.globalLastUpdated ?? now;
                          
+      final currentKeys = <String>{};
       for (final p in prices) {
         final key = 'Minor|${p.category}|${p.item}|${p.quality}';
+        currentKeys.add(key);
         final priceStr = p.price;
         if (_priceSnapshot[key] != priceStr) {
           _priceSnapshot[key] = priceStr;
@@ -200,6 +206,8 @@ class SpotPriceController extends GetxController {
           itemLastUpdated[key] = serverTime;
         }
       }
+      // Cleanup stale keys
+      _priceSnapshot.removeWhere((key, value) => key.startsWith('Minor|') && !currentKeys.contains(key));
       _savePersistedCache();
     }
   }
@@ -330,11 +338,13 @@ class SpotPriceController extends GetxController {
       final serverTime = _sheetsService!.sheetTimestamps['COPY'] ?? 
                          _sheetsService!.globalLastUpdated ?? now;
                          
+      final currentKeys = <String>{};
       for (final city in nfData.cities) {
         for (final section in city.sections) {
           for (final item in section.items) {
             if (item.isSubHeader) continue;
             final key = 'NonFerrous|${section.sectionName}|${item.name}|${city.cityName}';
+            currentKeys.add(key);
             final priceStr = item.displayPrice1 + (item.price2 != null ? item.displayPrice2 : '');
             if (_priceSnapshot[key] != priceStr) {
               _priceSnapshot[key] = priceStr;
@@ -351,6 +361,7 @@ class SpotPriceController extends GetxController {
         for (final item in section.items) {
           if (item.isSubHeader) continue;
           final key = 'NonFerrous|${section.sectionName}|${item.name}|DELHI';
+          currentKeys.add(key);
           final priceStr = item.displayPrice1 + (item.price2 != null ? item.displayPrice2 : '');
           if (_priceSnapshot[key] != priceStr) {
             _priceSnapshot[key] = priceStr;
@@ -360,6 +371,9 @@ class SpotPriceController extends GetxController {
           }
         }
       }
+      
+      // Cleanup stale keys so if a cell is blanked and re-entered, it registers as a change
+      _priceSnapshot.removeWhere((key, value) => key.startsWith('NonFerrous|') && !currentKeys.contains(key));
       
       _savePersistedCache();
     }

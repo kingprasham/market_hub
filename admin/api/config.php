@@ -415,10 +415,10 @@ function send_push_to_all($title, $body, $data = [], $target_plans = null) {
  */
 function send_content_notification($type, $title, $content_id, $target_plans = null) {
     $type_labels = [
-        'news' => 'New News',
-        'hindi_news' => 'नई खबर',
-        'circular' => 'New Circular',
-        'home_update' => 'New Update'
+        'news' => 'MH Alert',
+        'hindi_news' => 'MH Alert',
+        'circular' => 'MH Alert',
+        'home_update' => 'MH Alert'
     ];
     
     $notification_title = $type_labels[$type] ?? 'New Content';

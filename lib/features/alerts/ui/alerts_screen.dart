@@ -22,14 +22,6 @@ class AlertsScreen extends GetView<AlertsController> {
       onPopInvoked: (didPop) async {
         if (didPop) return;
         
-        if (controller.selectedTabIndex.value == 0) { // Live Feed Tab
-          final canGoBack = await controller.liveFeedWebController.canGoBack();
-          if (canGoBack) {
-            controller.liveFeedWebController.goBack();
-            return;
-          }
-        }
-        
         // Show exit confirmation dialog
         if (context.mounted) {
           _showExitDialog(context);
@@ -145,7 +137,6 @@ class AlertsScreen extends GetView<AlertsController> {
   Widget _buildTabItem(int index) {
     final isSelected = controller.selectedTabIndex.value == index;
     final icons = [
-      Icons.bolt,
       Icons.article,
       Icons.translate,
       Icons.description,
@@ -191,14 +182,12 @@ class AlertsScreen extends GetView<AlertsController> {
   Widget _buildTabContent() {
     switch (controller.selectedTabIndex.value) {
       case 0:
-        return _buildLiveFeedContent();
-      case 1:
         return _buildNewsContent();
-      case 2:
+      case 1:
         return _buildHindiNewsContent();
-      case 3:
+      case 2:
         return _buildCircularsContent();
-      case 4:
+      case 3:
         return _buildEconomicCalendarContent();
       default:
         return const SizedBox.shrink();
@@ -573,7 +562,7 @@ class AlertsScreen extends GetView<AlertsController> {
                     style: TextStyles.bodyLarge.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
-                    maxLines: 2,
+                    maxLines: 4,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),

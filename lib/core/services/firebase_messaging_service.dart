@@ -186,7 +186,7 @@ class FirebaseMessagingService extends GetxService {
 
     switch (type) {
       case 'news':
-        // Navigate to Alerts tab (index 3) -> News sub-tab (index 1)
+        // Navigate to Alerts tab (index 3) -> News sub-tab (index 0)
         debugPrint('FCM: Opening news from notification');
         Get.offAllNamed('/main');
         // Small delay to ensure controllers are ready
@@ -196,7 +196,7 @@ class FirebaseMessagingService extends GetxService {
             navController.changePage(3); // Alerts Tab
             
             final alertsController = Get.find<AlertsController>();
-            alertsController.changeTab(1); // News Sub-tab
+            alertsController.changeTab(0); // News Sub-tab (was 1, now 0 after Live Feed removed)
           } catch (e) {
             debugPrint('FCM Navigation Error: $e');
           }
@@ -204,7 +204,7 @@ class FirebaseMessagingService extends GetxService {
         break;
 
       case 'hindi_news':
-        // Navigate to Alerts tab (index 3) -> Hindi News sub-tab (index 2)
+        // Navigate to Alerts tab (index 3) -> Hindi News sub-tab (index 1)
         debugPrint('FCM: Opening hindi news from notification');
         Get.offAllNamed('/main');
         Future.delayed(const Duration(milliseconds: 500), () {
@@ -213,7 +213,7 @@ class FirebaseMessagingService extends GetxService {
             navController.changePage(3); // Alerts Tab
             
             final alertsController = Get.find<AlertsController>();
-            alertsController.changeTab(2); // Hindi News Sub-tab
+            alertsController.changeTab(1); // Hindi News Sub-tab (was 2, now 1 after Live Feed removed)
           } catch (e) {
             debugPrint('FCM Navigation Error: $e');
           }
@@ -221,7 +221,7 @@ class FirebaseMessagingService extends GetxService {
         break;
 
       case 'circular':
-        // Navigate to Alerts tab (index 3) -> Circular sub-tab (index 3)
+        // Navigate to Alerts tab (index 3) -> Circular sub-tab (index 2)
         debugPrint('FCM: Opening circulars from notification');
         Get.offAllNamed('/main');
         Future.delayed(const Duration(milliseconds: 500), () {
@@ -230,7 +230,7 @@ class FirebaseMessagingService extends GetxService {
             navController.changePage(3); // Alerts Tab
             
             final alertsController = Get.find<AlertsController>();
-            alertsController.changeTab(3); // Circular Sub-tab
+            alertsController.changeTab(2); // Circular Sub-tab (was 3, now 2 after Live Feed removed)
           } catch (e) {
             debugPrint('FCM Navigation Error: $e');
           }
@@ -289,6 +289,39 @@ class FirebaseMessagingService extends GetxService {
           colorText: const Color(0xFFFFFFFF),
         );
         Get.offAllNamed('/login');
+        break;
+
+      case 'forex_update':
+        // Navigate to Spot tab (index 2) with Forex category
+        debugPrint('FCM: Opening forex from notification');
+        Get.offAllNamed('/main');
+        Future.delayed(const Duration(milliseconds: 500), () {
+          try {
+            final navController = Get.find<NavigationController>();
+            navController.changePage(2); // Spot Tab
+            if (Get.isRegistered<SpotPriceController>()) {
+              final spotController = Get.find<SpotPriceController>();
+              spotController.selectedCategory.value = 'Forex';
+            }
+          } catch (e) {
+            debugPrint('FCM Navigation Error: $e');
+          }
+        });
+        break;
+
+      case 'futures_update':
+      case 'settlement_update':
+        // Navigate to Futures tab (index 1)
+        debugPrint('FCM: Opening futures from notification');
+        Get.offAllNamed('/main');
+        Future.delayed(const Duration(milliseconds: 500), () {
+          try {
+            final navController = Get.find<NavigationController>();
+            navController.changePage(1); // Futures Tab
+          } catch (e) {
+            debugPrint('FCM Navigation Error: $e');
+          }
+        });
         break;
 
       default:

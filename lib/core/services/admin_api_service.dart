@@ -64,8 +64,12 @@ class AdminApiService extends GetxService {
       // ONLY logout if it's a 401 (Unauthorized) or 403 (Forbidden)
       // This ensures that network errors don't blow away the session
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        debugPrint('CRITICAL AUTH ERROR (HTTP ${e.response?.statusCode}): Token invalid or expired. Cleaning up session.');
-        await logout();
+        debugPrint('CRITICAL AUTH ERROR (HTTP ${e.response?.statusCode}): Token invalid or expired. Clearing token only.');
+        // Only clear the token, NOT the user data. The user should be able to
+        // re-authenticate via PIN without being forced to re-register.
+        await LocalStorage.deleteAuthToken();
+        _dio.options.headers.remove('Authorization');
+        isLoggedIn.value = false;
       } else {
         debugPrint('TRANSIENT NETWORK/SERVER ERROR (HTTP ${e.response?.statusCode}): Keeping existing session.');
         

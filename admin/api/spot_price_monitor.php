@@ -294,7 +294,7 @@ function parse_csv_prices($csv_data, $sheet_type) {
                 if (count($row) >= 16) {
                     $metal = strtoupper(trim($row[14])); // Col O
                     if (in_array($metal, ['COPPER', 'TIN', 'LEAD', 'ZINC', 'ALUMINIUM', 'NICKEL', 'AL. ALLOY', 'NASAAC', 'COBALT'])) {
-                        $prices["Settlement|{$metal} Bid"] = trim($row[15]); // Col P
+                        $prices["Settlement|{$metal} Ask"] = trim($row[16]); // Col Q (Ask)
                         $prices["Settlement|{$metal} 3M"] = trim($row[17]);  // Col R
                     }
                 }
@@ -444,7 +444,7 @@ function send_spot_price_notification($changes) {
         // If there are many changes in one category, it's likely a bulk update or noise
         // But if it's just a few, it's more relevant
         
-        $title = "📊 {$cat_label} Update";
+        $title = "MH Alert";
         $body_parts = [];
         
         // Group by city within category (if applicable)
@@ -458,24 +458,14 @@ function send_spot_price_notification($changes) {
         foreach ($by_city as $city => $city_changes) {
             $count = count($city_changes);
             
-            // If user only changed one thing (like Lead), count will be 1
-            // We want to show the specific item clearly
+            // Simplified notification body - just say "price updated"
             $details = [];
              foreach ($city_changes as $ch) {
                 $arrow = $ch['direction'] === 'up' ? '↑' : '↓';
-                // Choose symbol based on category
-                $symbol = '₹';
-                if ($cat === 'Settlement' || $cat === 'Warehouse') {
-                    $symbol = '$';
-                }
-                
-                // Format prices to 2 decimals
-                $old_fmt = number_format($ch['old_price'], 2);
-                $new_fmt = number_format($ch['new_price'], 2);
                 
                 // Clean item name
                 $item_display = trim(str_replace($city, '', $ch['item']));
-                $details[] = "{$item_display}: {$symbol}{$old_fmt} → {$symbol}{$new_fmt} {$arrow}";
+                $details[] = "{$item_display} {$arrow}";
             }
             
             $city_display = ($city !== 'Market' && $city !== 'Forex' && $city !== 'Settlement' && $city !== 'Warehouse') ? ucfirst(strtolower($city)) . ": " : "";
@@ -483,8 +473,7 @@ function send_spot_price_notification($changes) {
         }
         
         // Final body construction
-        // If we have many cities/items, we might needs to truncate
-        $body = implode(' | ', $body_parts);
+        $body = "{$cat_label}: " . implode(' | ', $body_parts);
         if (strlen($body) > 180) {
             $body = substr($body, 0, 177) . '...';
         }

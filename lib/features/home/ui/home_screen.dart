@@ -956,7 +956,7 @@ class HomeScreen extends GetView<HomeController> {
                                           fontWeight: FontWeight.w700,
                                           color: ColorConstants.textPrimary,
                                         ),
-                                        maxLines: 1,
+                                        maxLines: 3,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),

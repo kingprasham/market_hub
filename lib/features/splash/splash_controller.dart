@@ -20,29 +20,24 @@ class SplashController extends GetxController {
     debugPrint('SplashController: Delay complete, checking auth state');
     
     try {
-      // Check if first launch
-      // Check if user is logged in (has stored user data)
+      // Check if user is logged in (has stored user data in Hive)
+      // Hive is a reliable local database that persists across app restarts.
+      // We do NOT gate on the auth token from secure storage because:
+      // 1) Secure storage can fail when device is locked
+      // 2) AdminApiService.init() can clear the token on transient 401 errors
+      // 3) The user already authenticated with their PIN previously
       final user = LocalStorage.getUser();
-      final token = await LocalStorage.getAuthToken();
       
-      if (user != null && token != null && token.isNotEmpty) {
-        debugPrint('SplashController: Valid token found, bypassing login completely');
+      if (user != null) {
+        debugPrint('SplashController: User found in local storage (${user.email}), going to main');
         Get.offAllNamed(AppRoutes.main);
-      } else if (user != null) {
-        debugPrint('SplashController: User found but no token, going to login (PIN)');
-        Get.offAllNamed(AppRoutes.login);
       } else {
         debugPrint('SplashController: No user found, going to login');
         Get.offAllNamed(AppRoutes.login);
       }
-      return;
-
-
     } catch (e) {
       debugPrint('SplashController: Navigation error: $e');
-      // Fallback
-      Get.offAllNamed(AppRoutes.registration);
+      Get.offAllNamed(AppRoutes.login);
     }
   }
 }
-

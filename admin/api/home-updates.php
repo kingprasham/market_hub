@@ -51,7 +51,7 @@ foreach ($updates as $item) {
         'description' => $item['description'],
         'imageUrl' => $imageUrl,
         'pdfUrl' => $pdfUrl,
-        'createdAt' => $item['created_at'],
+        'createdAt' => date('c', strtotime($item['created_at'])),
         'targetPlans' => json_decode($item['target_plans'] ?? '["all"]', true)
     ];
 }
