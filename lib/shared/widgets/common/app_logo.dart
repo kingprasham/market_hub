@@ -29,13 +29,16 @@ class AppLogo extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: Image.asset(
-          'assets/images/logo.png',
-          width: iconSize,
-          height: iconSize,
-          fit: BoxFit.cover,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: Image.asset(
+            'assets/images/logo.png',
+            width: iconSize,
+            height: iconSize,
+            fit: BoxFit.contain,
+          ),
         ),
       ),
     );

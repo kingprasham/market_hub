@@ -204,9 +204,10 @@ class WatchlistService extends GetxService {
     double? price,
     double? change,
     double? changePercent,
+    DateTime? timestamp,
   }) {
     bool hasChanges = false;
-    final now = DateTime.now();
+    final now = timestamp ?? DateTime.now();
 
     for (int i = 0; i < watchlistItems.length; i++) {
       final item = watchlistItems[i];
@@ -256,9 +257,10 @@ class WatchlistService extends GetxService {
     double? price,
     double? change,
     double? changePercent,
+    DateTime? timestamp,
   }) {
     bool hasChanges = false;
-    final now = DateTime.now();
+    final now = timestamp ?? DateTime.now();
 
     for (int i = 0; i < watchlistItems.length; i++) {
       final item = watchlistItems[i];
@@ -328,7 +330,7 @@ class WatchlistService extends GetxService {
             price: updated.price ?? old.price,
             change: updated.change ?? old.change,
             changePercent: updated.changePercent ?? old.changePercent,
-            lastUpdated: DateTime.now(),
+            lastUpdated: updated.lastUpdated ?? DateTime.now(),
           );
           hasChanges = true;
         }

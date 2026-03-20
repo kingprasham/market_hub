@@ -860,10 +860,11 @@ class HomeScreen extends GetView<HomeController> {
                       color: ColorConstants.primaryOrange.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.rss_feed_rounded,
-                      size: 20,
-                      color: ColorConstants.primaryOrange,
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      width: 20,
+                      height: 20,
+                      fit: BoxFit.contain,
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -1099,10 +1100,11 @@ class HomeScreen extends GetView<HomeController> {
         ],
       ),
       child: Center(
-        child: Icon(
-          _getUpdateIcon(category),
-          size: 28,
-          color: Colors.white,
+        child: Image.asset(
+          'assets/images/logo.png',
+          width: 35,
+          height: 35,
+          fit: BoxFit.contain,
         ),
       ),
     );

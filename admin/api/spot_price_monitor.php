@@ -444,7 +444,7 @@ function send_spot_price_notification($changes) {
         // If there are many changes in one category, it's likely a bulk update or noise
         // But if it's just a few, it's more relevant
         
-        $title = "MH Alert";
+        $title = "MH Spot Update";
         $body_parts = [];
         
         // Group by city within category (if applicable)
@@ -465,7 +465,7 @@ function send_spot_price_notification($changes) {
                 
                 // Clean item name
                 $item_display = trim(str_replace($city, '', $ch['item']));
-                $details[] = "{$item_display} {$arrow}";
+                $details[] = "{$item_display}: ₹{$ch['new_price']} {$arrow}";
             }
             
             $city_display = ($city !== 'Market' && $city !== 'Forex' && $city !== 'Settlement' && $city !== 'Warehouse') ? ucfirst(strtolower($city)) . ": " : "";

@@ -3,6 +3,9 @@
  * Market Hub API - Configuration
  */
 
+// Set timezone for consistent timing across app and dashboard
+date_default_timezone_set('Asia/Kolkata');
+
 // Only set API headers when this file is used for API calls, not when included from admin pages
 if (!defined('ADMIN_PANEL')) {
     // Allow CORS for mobile app
@@ -415,9 +418,9 @@ function send_push_to_all($title, $body, $data = [], $target_plans = null) {
  */
 function send_content_notification($type, $title, $content_id, $target_plans = null) {
     $type_labels = [
-        'news' => 'MH Alert',
-        'hindi_news' => 'MH Alert',
-        'circular' => 'MH Alert',
+        'news' => 'MH News',
+        'hindi_news' => 'MH Hindi News',
+        'circular' => 'MH Circular Update',
         'home_update' => 'MH Alert'
     ];
     

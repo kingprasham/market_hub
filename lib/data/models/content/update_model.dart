@@ -49,10 +49,14 @@ class UpdateModel {
     if (dateStr == null || dateStr.toString().isEmpty) return DateTime.now();
     try {
       String str = dateStr.toString();
-      // If string doesn't end with Z and doesn't contain a timezone offset, assume it's UTC from PHP
-      if (!str.endsWith('Z') && !RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(str)) {
+      // Regular expression to check for ISO 8601 timezone offset (+HH:mm or -HH:mm or Z)
+      final hasTz = str.endsWith('Z') || RegExp(r'[+-]\d{2}(:?\d{2})?$').hasMatch(str);
+      
+      if (!hasTz) {
+        // If no timezone is provided, assume it's UTC from PHP without 'c' format
         str += 'Z';
       }
+      
       return DateTime.parse(str).toLocal();
     } catch (e) {
       return DateTime.now();

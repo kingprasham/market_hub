@@ -488,11 +488,21 @@ class SpotPriceController extends GetxController {
     final index = baseMetalPrices.indexWhere((item) => item.symbol == update['symbol']);
     if (index != -1) {
       final old = baseMetalPrices[index];
+      final now = DateTime.now();
       baseMetalPrices[index] = old.copyWith(
         price: update['price']?.toDouble(),
         change: update['change']?.toDouble(),
         changePercent: update['changePercent']?.toDouble(),
-        lastUpdated: DateTime.now(),
+        lastUpdated: now,
+      );
+      
+      // Update Watchlist immediately
+      _watchlistService?.updatePriceById(
+        id: old.id,
+        price: update['price']?.toDouble(),
+        change: update['change']?.toDouble(),
+        changePercent: update['changePercent']?.toDouble(),
+        timestamp: now,
       );
     }
   }
@@ -501,11 +511,21 @@ class SpotPriceController extends GetxController {
     final index = bmePrices.indexWhere((item) => item.symbol == update['symbol']);
     if (index != -1) {
       final old = bmePrices[index];
+      final now = DateTime.now();
       bmePrices[index] = old.copyWith(
         price: update['price']?.toDouble(),
         change: update['change']?.toDouble(),
         changePercent: update['changePercent']?.toDouble(),
-        lastUpdated: DateTime.now(),
+        lastUpdated: now,
+      );
+      
+      // Update Watchlist immediately
+      _watchlistService?.updatePriceById(
+        id: old.id,
+        price: update['price']?.toDouble(),
+        change: update['change']?.toDouble(),
+        changePercent: update['changePercent']?.toDouble(),
+        timestamp: now,
       );
     }
   }
@@ -556,6 +576,7 @@ class SpotPriceController extends GetxController {
         price: p.price,
         change: p.change,
         changePercent: p.changePercent,
+        timestamp: p.updatedAt,
       );
     }
 
@@ -566,6 +587,7 @@ class SpotPriceController extends GetxController {
         price: p.price,
         change: p.change,
         changePercent: p.changePercent,
+        timestamp: p.updatedAt,
       );
     }
 
@@ -580,7 +602,8 @@ class SpotPriceController extends GetxController {
             _watchlistService!.updatePriceById(
               id: id,
               price: item.price1,
-              // Change/Percent might need specific logic if not directly in item
+              timestamp: itemLastUpdated[id] ?? item.lastUpdated,
+              // Change/Percent info could be added if we calculate it for NF
             );
           }
         }
@@ -593,6 +616,7 @@ class SpotPriceController extends GetxController {
       _watchlistService!.updatePriceById(
         id: id,
         price: category.price,
+        timestamp: itemLastUpdated[id] ?? category.lastUpdated,
       );
     }
 
@@ -605,6 +629,7 @@ class SpotPriceController extends GetxController {
         _watchlistService!.updatePriceById(
           id: id,
           price: price,
+          timestamp: itemLastUpdated[id] ?? minor.parsedDate,
         );
       }
     }
@@ -798,6 +823,82 @@ class SpotPriceController extends GetxController {
       );
     }
     // Update trigger handled by listener
+  }
+
+  void toggleWatchlistNonFerrous(MetalItem item, String city, String section) {
+    if (_watchlistService == null) return;
+    
+    final id = 'spot_nf_${city.toLowerCase()}_${section.toLowerCase()}_${item.name.toLowerCase()}';
+    
+    if (_watchlistService!.isInWatchlist(id)) {
+      _watchlistService!.removeFromWatchlist(id);
+    } else {
+      _watchlistService!.addToWatchlist(
+        WatchlistItemModel(
+          id: id,
+          symbol: item.name,
+          name: item.name,
+          exchange: city,
+          price: item.price1 ?? 0,
+          currency: 'INR',
+          type: 'SPOT',
+          itemType: 'spot_nf',
+          lastUpdated: itemLastUpdated[id] ?? item.lastUpdated ?? DateTime.now(),
+        ),
+      );
+    }
+    watchlistUpdateTrigger.value++;
+  }
+
+  void toggleWatchlistFerrous(FerrousPriceModel item) {
+    if (_watchlistService == null) return;
+    
+    final id = 'spot_ferrous_${item.category.toLowerCase()}_${item.city.toLowerCase()}';
+    
+    if (_watchlistService!.isInWatchlist(id)) {
+      _watchlistService!.removeFromWatchlist(id);
+    } else {
+      _watchlistService!.addToWatchlist(
+        WatchlistItemModel(
+          id: id,
+          symbol: item.category,
+          name: '${item.category} - ${item.city}',
+          exchange: item.city,
+          price: item.price,
+          currency: 'INR',
+          type: 'SPOT',
+          itemType: 'spot_ferrous',
+          lastUpdated: itemLastUpdated[id] ?? item.lastUpdated,
+        ),
+      );
+    }
+    watchlistUpdateTrigger.value++;
+  }
+
+  void toggleWatchlistMinor(MinorPriceModel item) {
+    if (_watchlistService == null) return;
+    
+    final id = 'spot_minor_${item.category.toLowerCase()}_${item.item.toLowerCase()}';
+    final price = double.tryParse(item.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+    
+    if (_watchlistService!.isInWatchlist(id)) {
+      _watchlistService!.removeFromWatchlist(id);
+    } else {
+      _watchlistService!.addToWatchlist(
+        WatchlistItemModel(
+          id: id,
+          symbol: item.item,
+          name: '${item.item} (${item.quality})',
+          exchange: item.category,
+          price: price,
+          currency: 'INR',
+          type: 'SPOT',
+          itemType: 'spot_minor',
+          lastUpdated: itemLastUpdated[id] ?? item.parsedDate ?? DateTime.now(),
+        ),
+      );
+    }
+    watchlistUpdateTrigger.value++;
   }
 
   @override

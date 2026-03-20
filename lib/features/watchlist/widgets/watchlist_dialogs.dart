@@ -14,6 +14,7 @@ import '../../future/pages/china_shfe/controller/china_shfe_controller.dart';
 import '../../future/pages/us_comex/controller/us_comex_controller.dart';
 import '../../spot_price/controller/spot_price_controller.dart';
 import '../../future/pages/fx/controller/fx_controller.dart';
+import '../../../data/models/market/non_ferrous_sheet_data.dart';
 import '../../../core/utils/helpers.dart';
 
 /// Dialog for adding items to watchlist - Shows selectable list from data sources
@@ -25,9 +26,11 @@ class AddToWatchlistDialog extends StatefulWidget {
 }
 
 class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
-  String _currentStep = 'category'; // category, subcategory, items
+  String _currentStep = 'category'; // category, subcategory, city, section, items
   String _selectedCategory = '';
   String _selectedSubCategory = '';
+  String _selectedCity = '';
+  String _selectedSection = '';
   
   final _categories = ['Spot', 'Future', 'FX'];
   
@@ -56,6 +59,34 @@ class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
   void _onSubCategorySelected(String subCategory) {
     setState(() {
       _selectedSubCategory = subCategory;
+      if (_selectedCategory == 'Spot') {
+        if (subCategory == 'Non-Ferrous') {
+          _currentStep = 'city';
+        } else if (subCategory == 'Steel') {
+          _currentStep = 'city'; // For Ferrous, we select category then city
+        } else {
+          _currentStep = 'items';
+        }
+      } else {
+        _currentStep = 'items';
+      }
+    });
+  }
+
+  void _onCitySelected(String city) {
+    setState(() {
+      _selectedCity = city;
+      if (_selectedSubCategory == 'Non-Ferrous') {
+        _currentStep = 'section';
+      } else {
+        _currentStep = 'items';
+      }
+    });
+  }
+
+  void _onSectionSelected(String section) {
+    setState(() {
+      _selectedSection = section;
       _currentStep = 'items';
     });
   }
@@ -65,9 +96,17 @@ class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
       if (_currentStep == 'items') {
         if (_selectedCategory == 'FX') {
           _currentStep = 'category';
+        } else if (_selectedCategory == 'Spot' && _selectedSubCategory == 'Non-Ferrous') {
+          _currentStep = 'section';
+        } else if (_selectedCategory == 'Spot' && _selectedSubCategory == 'Steel') {
+          _currentStep = 'city';
         } else {
           _currentStep = 'subcategory';
         }
+      } else if (_currentStep == 'section') {
+        _currentStep = 'city';
+      } else if (_currentStep == 'city') {
+        _currentStep = 'subcategory';
       } else if (_currentStep == 'subcategory') {
         _currentStep = 'category';
       }
@@ -133,11 +172,73 @@ class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
         return _buildCategoryList();
       case 'subcategory':
         return _buildSubCategoryList();
+      case 'city':
+        return _buildCityList();
+      case 'section':
+        return _buildSectionList();
       case 'items':
         return _buildItemList();
       default:
         return const SizedBox.shrink();
     }
+  }
+
+  Widget _buildCityList() {
+    final controller = Get.find<SpotPriceController>();
+    List<String> cities = [];
+    
+    if (_selectedSubCategory == 'Non-Ferrous') {
+      cities = controller.nonFerrousData.value?.cities.map((c) => c.cityName).toList() ?? [];
+    } else if (_selectedSubCategory == 'Steel') {
+      // Ferrous categories: Steel, Mandi, etc.
+      cities = controller.ferrousPrices.map((p) => p.city).toSet().toList();
+    }
+    
+    cities.sort();
+
+    if (cities.isEmpty) return _buildEmptyState();
+
+    return ListView.builder(
+      itemCount: cities.length,
+      itemBuilder: (context, index) {
+        final city = cities[index];
+        return _buildSelectionCard(
+          title: city,
+          icon: Icons.location_on_rounded,
+          color: ColorConstants.primaryOrange,
+          onTap: () => _onCitySelected(city),
+        );
+      },
+    );
+  }
+
+  Widget _buildSectionList() {
+    final controller = Get.find<SpotPriceController>();
+    List<String> sections = [];
+    
+    if (_selectedSubCategory == 'Non-Ferrous') {
+      final cityData = controller.nonFerrousData.value?.getCityData(_selectedCity);
+      if (cityData != null) {
+        sections = cityData.sections
+            .map((s) => s.sectionName)
+            .toList();
+      }
+    }
+
+    if (sections.isEmpty) return _buildEmptyState();
+
+    return ListView.builder(
+      itemCount: sections.length,
+      itemBuilder: (context, index) {
+        final section = sections[index];
+        return _buildSelectionCard(
+          title: section,
+          icon: Icons.grid_view_rounded,
+          color: ColorConstants.primaryBlue,
+          onTap: () => _onSectionSelected(section),
+        );
+      },
+    );
   }
 
   Widget _buildCategoryList() {
@@ -283,11 +384,20 @@ class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
       List<dynamic> items = [];
       
       if (_selectedSubCategory == 'Non-Ferrous') {
-        items = controller.baseMetalPrices;
+        final cityData = controller.nonFerrousData.value?.getCityData(_selectedCity);
+        if (cityData != null) {
+          try {
+            final section = cityData.sections.firstWhere((s) => s.sectionName == _selectedSection);
+            items = section.items.where((i) => !i.isSubHeader).toList();
+          } catch (_) {}
+        }
       } else if (_selectedSubCategory == 'Minor and Ferro') {
         items = controller.minorPrices;
       } else if (_selectedSubCategory == 'Steel') {
-        items = controller.ferrousPrices;
+        items = controller.ferrousPrices.where((p) => p.city == _selectedCity).toList();
+      } else {
+        // Default spot prices (Base Metals)
+        items = controller.baseMetalPrices;
       }
 
       if (items.isEmpty) return _buildEmptyState();
@@ -316,14 +426,19 @@ class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
             price = item.price;
             change = item.change;
             changePercent = item.changePercent;
+          } else if (item is MetalItem) {
+            name = item.name;
+            symbol = 'spot_nf_${_selectedCity.toLowerCase()}_${_selectedSection.toLowerCase()}_${item.name.toLowerCase()}';
+            location = _selectedCity;
+            price = item.price1;
           } else if (item is FerrousPriceModel) {
             name = item.category;
-            symbol = '${item.category}_${item.city}';
+            symbol = 'spot_ferrous_${item.category.toLowerCase()}_${item.city.toLowerCase()}';
             location = item.city;
             price = item.price;
           } else if (item is MinorPriceModel) {
             name = item.item;
-            symbol = '${item.category}_${item.item}';
+            symbol = 'spot_minor_${item.category.toLowerCase()}_${item.item.toLowerCase()}';
             location = item.category;
             // Parse price string like "123.45 Rs/Kg" or "100-110"
             final priceStr = item.price.split(' ').first;
@@ -430,11 +545,20 @@ class _AddToWatchlistDialogState extends State<AddToWatchlistDialog> {
             ),
             onPressed: isAdded ? null : () {
               final itemType = type == 'London' ? 'LME' : (type == 'China' ? 'SHFE' : type);
+              
+              // Handle specialized type mapping for itemType field in WatchlistItemModel
+              String specificType = itemType;
+              if (itemType == 'SPOT') {
+                if (_selectedSubCategory == 'Non-Ferrous') specificType = 'spot_nf';
+                else if (_selectedSubCategory == 'Steel') specificType = 'spot_ferrous';
+                else if (_selectedSubCategory == 'Minor and Ferro') specificType = 'spot_minor';
+              }
+
               watchlistController.addToWatchlist(WatchlistItemModel(
-                id: '${itemType}_$symbol',
+                id: symbol, // Symbol already contains the full ID for sheet items
                 symbol: symbol,
                 name: name,
-                itemType: itemType,
+                itemType: specificType,
                 currency: currency,
                 price: price,
                 change: change,

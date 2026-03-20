@@ -364,7 +364,7 @@ class SettlementChartPage extends GetView<SettlementController> {
                   ),
                 ),
                 title: Text(entry.date, style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w500)),
-                subtitle: Text('Pension CSP: ${NumberFormat("#,###").format(entry.stock)} MT', style: TextStyles.caption),
+                subtitle: Text('CSP: ${NumberFormat("#,###").format(entry.stock)} MT', style: TextStyles.caption),
                 trailing: Text(
                   '\$${entry.cash.toStringAsFixed(2)}',
                   style: TextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),

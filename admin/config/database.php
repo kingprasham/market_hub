@@ -30,6 +30,9 @@ if ($conn->connect_error) {
 // Set charset to UTF-8 for proper Unicode support (Hindi)
 $conn->set_charset("utf8mb4");
 
+// Set MySQL session timezone to IST (+05:30) for accurate timing
+$conn->query("SET time_zone = '+05:30'");
+
 /**
  * Execute a prepared statement with parameters
  * 

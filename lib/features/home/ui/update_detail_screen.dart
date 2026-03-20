@@ -148,11 +148,12 @@ class UpdateDetailScreen extends StatelessWidget {
       ),
       child: Center(
         child: Opacity(
-          opacity: 0.2,
-          child: Icon(
-            _getCategoryIcon(update.category),
-            size: 120,
-            color: Colors.white,
+          opacity: 0.15,
+          child: Image.asset(
+            'assets/images/logo.png',
+            width: 140,
+            height: 140,
+            fit: BoxFit.contain,
           ),
         ),
       ),
