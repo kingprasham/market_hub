@@ -39,7 +39,7 @@ try {
     );
     foreach ($news as $item) {
         $all_updates[] = [
-            'id' => 'news_' . $item['id'],
+            'id' => $item['id'],
             'title' => $item['title'],
             'description' => $item['description'],
             'imageUrl' => !empty($item['image_path']) ? $base_url . $item['image_path'] : null,
@@ -48,7 +48,7 @@ try {
             'contentType' => 'news',
             'category' => 'News (English)',
             'targetPlans' => json_decode($item['target_plans'] ?? '["all"]', true),
-            'createdAt' => $item['created_at']
+            'createdAt' => date('Y-m-d H:i:s', strtotime($item['created_at']))
         ];
     }
 
@@ -60,7 +60,7 @@ try {
     );
     foreach ($hindiNews as $item) {
         $all_updates[] = [
-            'id' => 'hindi_' . $item['id'],
+            'id' => $item['id'],
             'title' => $item['title'],
             'description' => $item['description'],
             'imageUrl' => !empty($item['image_path']) ? $base_url . $item['image_path'] : null,
@@ -69,7 +69,7 @@ try {
             'contentType' => 'hindi_news',
             'category' => 'समाचार (हिंदी)',
             'targetPlans' => json_decode($item['target_plans'] ?? '["all"]', true),
-            'createdAt' => $item['created_at']
+            'createdAt' => date('Y-m-d H:i:s', strtotime($item['created_at']))
         ];
     }
 
@@ -81,7 +81,7 @@ try {
     );
     foreach ($circulars as $item) {
         $all_updates[] = [
-            'id' => 'circular_' . $item['id'],
+            'id' => $item['id'],
             'title' => $item['title'],
             'description' => $item['description'],
             'imageUrl' => !empty($item['image_path']) ? $base_url . $item['image_path'] : null,
@@ -90,7 +90,7 @@ try {
             'contentType' => 'circular',
             'category' => 'Circular',
             'targetPlans' => json_decode($item['target_plans'] ?? '["all"]', true),
-            'createdAt' => $item['created_at']
+            'createdAt' => date('Y-m-d H:i:s', strtotime($item['created_at']))
         ];
     }
 
@@ -102,7 +102,7 @@ try {
     );
     foreach ($homeUpdates as $item) {
         $all_updates[] = [
-            'id' => 'update_' . $item['id'],
+            'id' => $item['id'],
             'title' => $item['title'],
             'description' => $item['description'],
             'imageUrl' => !empty($item['image_path']) ? $base_url . $item['image_path'] : null,
@@ -111,7 +111,7 @@ try {
             'contentType' => 'home_update',
             'category' => 'Update',
             'targetPlans' => json_decode($item['target_plans'] ?? '["all"]', true),
-            'createdAt' => $item['created_at']
+            'createdAt' => date('Y-m-d H:i:s', strtotime($item['created_at']))
         ];
     }
 

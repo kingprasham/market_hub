@@ -545,7 +545,7 @@ class AdminApiService extends GetxService {
           for (var item in items) {
             aggregated.add({
               ...item,
-              'id': '${prefix}_${item['id']}', // Unique ID
+              'id': item['id'], // Use raw numeric ID; contentType provides type uniqueness
               'contentType': type, // Required by NotificationsController
               'createdAt': item['createdAt'] ?? DateTime.now().toIso8601String(),
             });

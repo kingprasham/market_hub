@@ -54,7 +54,7 @@ try {
             'imageUrl' => $imageUrl,
             'pdfUrl' => $pdfUrl,
             'link' => $item['supporting_link'],
-            'createdAt' => $item['created_at'],
+            'createdAt' => date('Y-m-d H:i:s', strtotime($item['created_at'])),
             'targetPlans' => json_decode($item['target_plans'] ?? '["all"]', true)
         ];
     }

@@ -12,6 +12,10 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/upload.php';
 
+// Include API config for push notification functions (send_content_notification, send_push_to_all, etc.)
+// ADMIN_PANEL is defined above so config.php will skip HTTP headers
+require_once __DIR__ . '/../api/config.php';
+
 // Require login
 require_login();
 

@@ -3,12 +3,16 @@ import 'package:get/get.dart';
 import '../../../core/constants/color_constants.dart';
 import '../../../core/constants/text_styles.dart';
 import '../../../app/routes/app_routes.dart';
+import '../controller/profile_controller.dart';
 
-class SubscriptionPage extends StatelessWidget {
+class SubscriptionPage extends GetView<ProfileController> {
   const SubscriptionPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Refresh profile so we always show the latest subscription data
+    controller.loadUser();
+
     return Scaffold(
       backgroundColor: ColorConstants.backgroundColor,
       appBar: AppBar(
@@ -23,79 +27,97 @@ class SubscriptionPage extends StatelessWidget {
           style: TextStyles.h5.copyWith(color: ColorConstants.textPrimary),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Current Plan Card
-            _buildCurrentPlanCard(),
-            const SizedBox(height: 24),
+      body: Obx(() {
+        final user = controller.user.value;
 
-            // Available Plans
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Available Plans',
-                  style: TextStyles.h6.copyWith(fontWeight: FontWeight.w600),
+        return SingleChildScrollView(
+          child: Column(
+            children: [
+              // Current Plan Card
+              _buildCurrentPlanCard(user),
+              const SizedBox(height: 24),
+
+              // Contact support to change plan
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: ColorConstants.borderColor),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.support_agent, size: 40, color: ColorConstants.primaryBlue),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Need to change your plan?',
+                          style: TextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Contact us to upgrade or modify your subscription.',
+                          style: TextStyles.bodySmall.copyWith(color: ColorConstants.textSecondary),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () => Get.toNamed(AppRoutes.contactUs),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: ColorConstants.primaryBlue,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Contact Us',
+                              style: TextStyles.bodyMedium.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
 
-            _buildPlanCard(
-              name: 'Basic',
-              price: '₹0',
-              period: '/month',
-              features: [
-                'Daily spot prices',
-                'Basic news updates',
-                'Limited market data',
-              ],
-              isCurrentPlan: false,
-              color: Colors.grey,
-            ),
-
-            _buildPlanCard(
-              name: 'Professional',
-              price: '₹999',
-              period: '/month',
-              features: [
-                'Real-time spot prices',
-                'All news & circulars',
-                'Price alerts',
-                'Economic calendar',
-                'Watchlist (50 items)',
-              ],
-              isCurrentPlan: true,
-              color: ColorConstants.primaryBlue,
-              isPopular: true,
-            ),
-
-            _buildPlanCard(
-              name: 'Enterprise',
-              price: '₹2,499',
-              period: '/month',
-              features: [
-                'Everything in Professional',
-                'API access',
-                'Unlimited watchlist',
-                'Priority support',
-                'Custom alerts',
-                'Export data',
-              ],
-              isCurrentPlan: false,
-              color: ColorConstants.primaryOrange,
-            ),
-
-            const SizedBox(height: 100),
-          ],
-        ),
-      ),
+              const SizedBox(height: 100),
+            ],
+          ),
+        );
+      }),
     );
   }
 
-  Widget _buildCurrentPlanCard() {
+  Widget _buildCurrentPlanCard(dynamic user) {
+    final planName = user?.planName ?? 'No Plan';
+    final expiryDate = user?.planExpiryDate;
+    final isExpired = user?.isPlanExpired ?? true;
+
+    String expiryText;
+    if (expiryDate != null) {
+      final day = expiryDate.day.toString().padLeft(2, '0');
+      final months = [
+        '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      final month = months[expiryDate.month];
+      final year = expiryDate.year;
+      expiryText = isExpired
+          ? 'Expired on: $day $month $year'
+          : 'Renews on: $day $month $year';
+    } else {
+      expiryText = 'No expiry date set';
+    }
+
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
@@ -126,11 +148,13 @@ class SubscriptionPage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: ColorConstants.positiveGreen,
+                  color: isExpired
+                      ? ColorConstants.negativeRed
+                      : ColorConstants.positiveGreen,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  'ACTIVE',
+                  isExpired ? 'EXPIRED' : 'ACTIVE',
                   style: TextStyles.caption.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
@@ -141,15 +165,8 @@ class SubscriptionPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Professional Plan',
+            planName,
             style: TextStyles.h4.copyWith(color: Colors.white),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '₹999/month',
-            style: TextStyles.h5.copyWith(
-              color: Colors.white.withOpacity(0.9),
-            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -157,7 +174,7 @@ class SubscriptionPage extends StatelessWidget {
               const Icon(Icons.calendar_today, color: Colors.white70, size: 16),
               const SizedBox(width: 8),
               Text(
-                'Renews on: Jan 15, 2025',
+                expiryText,
                 style: TextStyles.bodySmall.copyWith(color: Colors.white70),
               ),
             ],
@@ -167,125 +184,4 @@ class SubscriptionPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPlanCard({
-    required String name,
-    required String price,
-    required String period,
-    required List<String> features,
-    required bool isCurrentPlan,
-    required Color color,
-    bool isPopular = false,
-  }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: isCurrentPlan
-            ? Border.all(color: color, width: 2)
-            : Border.all(color: ColorConstants.borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          if (isPopular)
-            Positioned(
-              top: 0,
-              right: 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(8),
-                    bottomRight: Radius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  'POPULAR',
-                  style: TextStyles.caption.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyles.h5.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      price,
-                      style: TextStyles.h3.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    Text(
-                      period,
-                      style: TextStyles.bodySmall.copyWith(
-                        color: ColorConstants.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 12),
-                ...features.map((feature) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_circle, color: color, size: 18),
-                          const SizedBox(width: 8),
-                          Text(feature, style: TextStyles.bodySmall),
-                        ],
-                      ),
-                    )),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: isCurrentPlan ? null : () {
-                      Get.toNamed(AppRoutes.contactUs);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isCurrentPlan ? Colors.grey[300] : color,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      isCurrentPlan ? 'Current Plan' : 'Upgrade',
-                      style: TextStyles.bodyMedium.copyWith(
-                        color: isCurrentPlan ? ColorConstants.textSecondary : Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

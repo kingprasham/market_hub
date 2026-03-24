@@ -37,7 +37,26 @@ class Formatters {
   }
 
   static String formatDateTime(DateTime dateTime) {
-    return DateFormat('dd MMM yyyy, HH:mm').format(dateTime);
+    return DateFormat('dd MMM yyyy, h:mm a').format(dateTime);
+  }
+
+  /// Smart display: "2:30 PM" (today), "Yesterday, 2:30 PM", "24 Mar, 2:30 PM" (this year), "24 Mar 2024" (older)
+  static String formatSmartDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final date = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    final timeStr = DateFormat('h:mm a').format(dateTime);
+
+    if (date == today) {
+      return timeStr;
+    } else if (date == yesterday) {
+      return 'Yesterday, $timeStr';
+    } else if (dateTime.year == now.year) {
+      return DateFormat('d MMM, h:mm a').format(dateTime);
+    } else {
+      return DateFormat('d MMM yyyy').format(dateTime);
+    }
   }
 
   static String formatTime(DateTime time) {

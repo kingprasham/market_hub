@@ -174,9 +174,12 @@ class NotificationsController extends GetxController {
         debugPrint('Error fetching server notifications: $e');
       }
 
+      // Subscription notifications are only shown in the subscription tab — exclude here
+      allNotifications.removeWhere((n) => n.type == NotificationType.subscription);
+
       // Sort by timestamp descending (newest first)
       allNotifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      
+
       _notifications.assignAll(allNotifications);
       debugPrint('Total notifications: ${allNotifications.length}');
     } catch (e) {
@@ -194,6 +197,8 @@ class NotificationsController extends GetxController {
         return NotificationType.newsUpdate;
       case 'account':
         return NotificationType.account;
+      case 'subscription':
+        return NotificationType.subscription;
       default:
         return NotificationType.system;
     }

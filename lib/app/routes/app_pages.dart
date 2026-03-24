@@ -244,6 +244,7 @@ class AppPages {
     GetPage(
       name: AppRoutes.subscription,
       page: () => const SubscriptionPage(),
+      binding: ProfileBinding(),
       transition: Transition.rightToLeft,
     ),
     GetPage(

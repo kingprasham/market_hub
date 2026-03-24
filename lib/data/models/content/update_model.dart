@@ -48,16 +48,12 @@ class UpdateModel {
   static DateTime _parseDate(dynamic dateStr) {
     if (dateStr == null || dateStr.toString().isEmpty) return DateTime.now();
     try {
-      String str = dateStr.toString();
-      // Regular expression to check for ISO 8601 timezone offset (+HH:mm or -HH:mm or Z)
-      final hasTz = str.endsWith('Z') || RegExp(r'[+-]\d{2}(:?\d{2})?$').hasMatch(str);
+      String str = dateStr.toString().trim();
       
-      if (!hasTz) {
-        // If no timezone is provided, assume it's UTC from PHP without 'c' format
-        str += 'Z';
-      }
-      
-      return DateTime.parse(str).toLocal();
+      // If the string is already a standard date-time format without timezone,
+      // we assume it's in the server's local time (IST).
+      // Adding 'Z' (as previously done) was forcing it to be UTC, which pushed it into the future.
+      return DateTime.parse(str);
     } catch (e) {
       return DateTime.now();
     }

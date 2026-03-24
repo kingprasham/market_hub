@@ -549,7 +549,7 @@ class AlertsScreen extends GetView<AlertsController> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        Formatters.formatDateTime(item.timestamp),
+                        Formatters.formatSmartDateTime(item.timestamp),
                         style: TextStyles.caption.copyWith(
                           color: ColorConstants.textSecondary,
                         ),

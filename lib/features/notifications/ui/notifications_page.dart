@@ -358,6 +358,8 @@ class NotificationsPage extends GetView<NotificationsController> {
         return Icons.info;
       case NotificationType.account:
         return Icons.person;
+      case NotificationType.subscription:
+        return Icons.card_membership;
     }
   }
 
@@ -370,6 +372,8 @@ class NotificationsPage extends GetView<NotificationsController> {
       case NotificationType.system:
         return ColorConstants.infoColor;
       case NotificationType.account:
+        return ColorConstants.successColor;
+      case NotificationType.subscription:
         return ColorConstants.successColor;
     }
   }

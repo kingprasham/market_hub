@@ -15,7 +15,11 @@
       "Bash(git rm:*)",
       "Bash(flutter build:*)",
       "Bash(powershell -Command \"[System.IO.File]::ReadAllBytes\\(''lib/features/watchlist/widgets/watchlist_dialogs.dart''\\)[5900..6100] | ForEach-Object { ''{0:X2}'' -f $_}\")",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(grep -E \"\\\\.php$\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://mehrgrewal.com/markethub/api/spot_price_monitor.php?key=mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC&debug=1\")",
+      "Bash(curl -s \"https://mehrgrewal.com/markethub/api/spot_price_monitor.php?key=mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC&debug=1\")",
+      "Bash(curl -s \"https://mehrgrewal.com/markethub/api/spot_price_monitor.php?key=mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC&test_notify=DELHI&debug=1\")"
     ]
   }
 }

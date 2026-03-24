@@ -29,10 +29,12 @@ if (!function_exists('generate_otp')) {
     require_once __DIR__ . '/../includes/functions.php';
 }
 
-// Error handling
-set_error_handler(function($severity, $message, $file, $line) {
-    throw new ErrorException($message, 0, $severity, $file, $line);
-});
+// Error handling: only convert errors to exceptions in API context, not admin UI pages
+if (!defined('ADMIN_PANEL')) {
+    set_error_handler(function($severity, $message, $file, $line) {
+        throw new ErrorException($message, 0, $severity, $file, $line);
+    });
+}
 
 /**
  * Send JSON response
@@ -256,34 +258,52 @@ function send_fcm_v1($token, $title, $body, $data, $service_account_json) {
         CURLOPT_POSTFIELDS => json_encode($message),
         CURLOPT_RETURNTRANSFER => true
     ]);
-    
+
     $response = curl_exec($ch);
+    $curl_error = curl_error($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    
-    return json_decode($response, true);
+
+    $result = json_decode($response, true);
+
+    if ($http_code !== 200) {
+        error_log("FCM V1 send failed (HTTP $http_code): " . substr($response, 0, 500));
+    }
+    if (!empty($curl_error)) {
+        error_log("FCM V1 curl error: $curl_error");
+    }
+
+    return $result;
+}
+
+/**
+ * Base64url encode (JWT-safe: no +, /, or = padding)
+ */
+function base64url_encode($data) {
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
 }
 
 /**
  * Get Firebase access token from service account
  */
 function get_firebase_access_token($service_account) {
-    $jwt_header = base64_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
-    
+    $jwt_header = base64url_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+
     $now = time();
-    $jwt_claim = base64_encode(json_encode([
+    $jwt_claim = base64url_encode(json_encode([
         'iss' => $service_account['client_email'],
         'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
         'aud' => 'https://oauth2.googleapis.com/token',
         'iat' => $now,
         'exp' => $now + 3600
     ]));
-    
+
     $signature_input = $jwt_header . '.' . $jwt_claim;
     $private_key = $service_account['private_key'];
-    
+
     openssl_sign($signature_input, $signature, $private_key, 'SHA256');
-    $jwt = $signature_input . '.' . base64_encode($signature);
-    
+    $jwt = $signature_input . '.' . base64url_encode($signature);
+
     $ch = curl_init('https://oauth2.googleapis.com/token');
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
@@ -293,10 +313,21 @@ function get_firebase_access_token($service_account) {
         ]),
         CURLOPT_RETURNTRANSFER => true
     ]);
-    
+
     $response = json_decode(curl_exec($ch), true);
+    $curl_error = curl_error($ch);
     curl_close($ch);
-    
+
+    if (!empty($curl_error)) {
+        error_log("FCM Auth curl error: $curl_error");
+        return null;
+    }
+
+    if (isset($response['error'])) {
+        error_log("FCM Auth error: " . json_encode($response['error']));
+        return null;
+    }
+
     return $response['access_token'] ?? null;
 }
 

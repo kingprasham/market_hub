@@ -3,6 +3,7 @@ enum NotificationType {
   newsUpdate,
   system,
   account,
+  subscription,
 }
 
 class NotificationModel {

@@ -40,16 +40,12 @@ class NewsModel {
       parsedTargetPlans = List<String>.from(json['plans']);
     }
 
-    // Robust DateTime parsing helper
+    // Parse date treating timezone-less strings as local (IST) time from server.
+    // Do NOT add 'Z' — the server stores IST timestamps without offset markers.
     DateTime parseDate(dynamic dateStr) {
       if (dateStr == null || dateStr.toString().isEmpty) return DateTime.now();
       try {
-        String str = dateStr.toString();
-        // If string doesn't end with Z and doesn't contain a timezone offset, assume it's UTC from PHP
-        if (!str.endsWith('Z') && !RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(str)) {
-          str += 'Z';
-        }
-        return DateTime.parse(str).toLocal();
+        return DateTime.parse(dateStr.toString().trim());
       } catch (e) {
         return DateTime.now();
       }
@@ -134,15 +130,11 @@ class CircularModel {
   });
 
   factory CircularModel.fromJson(Map<String, dynamic> json) {
-    // Robust DateTime parsing helper
+    // Parse date treating timezone-less strings as local (IST) time from server.
     DateTime parseDate(dynamic dateStr) {
       if (dateStr == null || dateStr.toString().isEmpty) return DateTime.now();
       try {
-        String str = dateStr.toString();
-        if (!str.endsWith('Z') && !RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(str)) {
-          str += 'Z';
-        }
-        return DateTime.parse(str).toLocal();
+        return DateTime.parse(dateStr.toString().trim());
       } catch (e) {
         return DateTime.now();
       }

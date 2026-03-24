@@ -225,7 +225,7 @@ class WatchlistController extends GetxController {
                  itemType == 'COMEX' ||
                  itemType == 'FUTURE';
         } else if (filterType == 'SPOT') {
-          return itemType == 'SPOT';
+          return itemType.contains('SPOT');
         }
         
         return false;

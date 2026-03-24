@@ -53,7 +53,7 @@ try {
             'description' => $item['description'],
             'pdfUrl' => $pdfUrl,
             'imageUrl' => $imageUrl,
-            'createdAt' => $item['created_at'],
+            'createdAt' => date('Y-m-d H:i:s', strtotime($item['created_at'])),
             'targetPlans' => json_decode($item['target_plans'] ?? '["all"]', true)
         ];
     }

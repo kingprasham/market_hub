@@ -45,6 +45,8 @@ String _getNotificationType(String? type) {
       return 'priceAlert';
     case 'approval':
       return 'account';
+    case 'subscription_update':
+      return 'subscription';
     default:
       return 'system';
   }
@@ -322,6 +324,12 @@ class FirebaseMessagingService extends GetxService {
             debugPrint('FCM Navigation Error: $e');
           }
         });
+        break;
+
+      case 'subscription_update':
+        // Navigate directly to the subscription page — not the general notifications tab
+        debugPrint('FCM: Opening subscription page from notification');
+        Get.toNamed('/profile/subscription');
         break;
 
       default:

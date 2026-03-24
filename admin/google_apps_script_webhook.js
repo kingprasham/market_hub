@@ -22,7 +22,12 @@
  *   hidden sheet called "_timestamps" (auto-created if missing).
  * - Format: "dd-MM-yyyy HH:mm:ss" in IST (Asia/Kolkata).
  * - It also optionally calls the spot_price_monitor webhook for push
- *   notifications (with a 30-second debounce).
+ *   notifications (with a 5-second debounce).
+ *
+ * IMPORTANT FIX (2026-03-21):
+ * - Reduced debounce from 30s → 5s so rapid city edits all trigger notifications.
+ * - Added 3-second sleep before webhook call so Google Sheets CSV sync catches up.
+ * - These fixes ensure ALL cities (not just Delhi) trigger notifications.
  */
 
 // ─── Configuration ───────────────────────────────────────────────
@@ -33,7 +38,7 @@ var DATE_FORMAT = "dd-MM-yyyy HH:mm:ss";
 // Webhook (same as the previous script — for push notification triggers)
 var WEBHOOK_URL = "https://mehrgrewal.com/markethub/api/spot_price_monitor.php";
 var CRON_SECRET = "mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC";
-var MIN_INTERVAL_SECONDS = 30;
+var MIN_INTERVAL_SECONDS = 5; // Reduced from 30 to catch rapid multi-city edits
 
 // ─── Main Trigger ────────────────────────────────────────────────
 function onSheetEdit(e) {
@@ -110,6 +115,14 @@ function _callWebhookDebounced(now) {
       return;
     }
 
+    // Mark the call time BEFORE sleeping so overlapping triggers are also debounced
+    props.setProperty("lastWebhookCall", String(nowSeconds));
+
+    // Wait 3 seconds for Google Sheets to finish syncing the CSV export.
+    // Without this delay, the PHP monitor fetches the sheet BEFORE the new
+    // value is visible in the CSV, so the change is missed for all cities.
+    Utilities.sleep(3000);
+
     var url = WEBHOOK_URL + "?key=" + CRON_SECRET;
     var response = UrlFetchApp.fetch(url, {
       method: "get",
@@ -117,7 +130,6 @@ function _callWebhookDebounced(now) {
       followRedirects: true,
     });
 
-    props.setProperty("lastWebhookCall", String(nowSeconds));
     Logger.log("Webhook called: HTTP " + response.getResponseCode());
   } catch (err) {
     Logger.log("Webhook error: " + err.message);

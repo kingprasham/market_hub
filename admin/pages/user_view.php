@@ -39,13 +39,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'update_plan') {
         $plan_id = intval($_POST['plan_id'] ?? 0);
         $expires_at = $_POST['expires_at'] ?? null;
-        
+
         db_query(
             "UPDATE users SET plan_id = ?, plan_expires_at = ? WHERE id = ?",
             'isi',
             [$plan_id ?: null, $expires_at ?: null, $user_id]
         );
-        
+
+        // Find plan name for notification
+        $plan_name = 'Unknown Plan';
+        foreach ($plans as $plan) {
+            if ($plan['id'] == $plan_id) {
+                $plan_name = $plan['name'];
+                break;
+            }
+        }
+
+        // Send push notification to user — subscription type only shows in subscription tab
+        send_user_notification(
+            $user_id,
+            'Subscription Updated 🎉',
+            'Your subscription has been updated to ' . $plan_name . '.',
+            [
+                'type'       => 'subscription_update',
+                'plan_id'    => (string)($plan_id ?: ''),
+                'plan_name'  => $plan_name,
+                'expires_at' => $expires_at ?: '',
+            ]
+        );
+
         redirect("user_view.php?id=$user_id", 'success', 'Plan updated successfully');
     }
     
