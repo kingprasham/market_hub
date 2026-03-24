@@ -92,22 +92,54 @@ if (file_exists($CACHE_FILE)) {
 }
 
 $all_changes = [];
-$new_cache = [];
+$new_cache = $cache; // Default to old cache
 
-$max_attempts = $is_cli ? 1 : 4; // Webhooks retry up to 4 times (20 seconds total)
-$attempt_delay = 5; // Sleep 5 seconds between attempts
-
-for ($attempt = 1; $attempt <= $max_attempts; $attempt++) {
+// INSTANT PUSH LOGIC (Google Apps Script)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csv_data'], $_POST['sheet_type'])) {
+    $log_func("Webhook triggered via direct POST push...");
+    $sheet_type = $_POST['sheet_type'];
+    $csv_data = trim($_POST['csv_data']);
+    $sheet_key = '';
+    $sheet_label = '';
+    
+    foreach ($SHEETS_TO_MONITOR as $key => $config) {
+        if ($config['type'] === $sheet_type) {
+            $sheet_key = $key;
+            $sheet_label = $config['label'];
+            break;
+        }
+    }
+    
+    if ($sheet_key) {
+        $current_prices = parse_csv_prices($csv_data, $sheet_type);
+        $log_func("  Parsed " . count($current_prices) . " price entries from POST.");
+        
+        $old_prices = isset($cache[$sheet_key]) ? $cache[$sheet_key] : [];
+        $all_changes = detect_changes($old_prices, $current_prices, $sheet_label);
+        
+        if (!empty($all_changes)) {
+            $log_func("  Found " . count($all_changes) . " price changes!");
+        } else {
+            $log_func("  No changes detected.");
+        }
+        
+        if (count($current_prices) > 0) {
+            $new_cache[$sheet_key] = $current_prices;
+        }
+    } else {
+        $log_func("  Unknown sheet type: $sheet_type");
+    }
+} else {
+    // FALLBACK GET / CRON LOGIC (1 pass)
     $all_changes = [];
     $new_cache = [];
     
     foreach ($SHEETS_TO_MONITOR as $key => $sheet_config) {
-        $log_func("Checking sheet: {$sheet_config['label']} ($key) - Attempt $attempt");
+        $log_func("Checking sheet via GET/Cron: {$sheet_config['label']} ($key)");
         
         $csv_data = fetch_sheet_csv($sheet_config['id'], $sheet_config['gid']);
         if ($csv_data === null) {
             $log_func("  Failed to fetch $key sheet, skipping.");
-            // Preserve old cache for this sheet
             if (isset($cache[$key])) {
                 $new_cache[$key] = $cache[$key];
             }
@@ -117,7 +149,6 @@ for ($attempt = 1; $attempt <= $max_attempts; $attempt++) {
         $current_prices = parse_csv_prices($csv_data, $sheet_config['type']);
         $log_func("  Parsed " . count($current_prices) . " price entries.");
         
-        // Compare with cached prices
         $old_prices = isset($cache[$key]) ? $cache[$key] : [];
         $changes = detect_changes($old_prices, $current_prices, $sheet_config['label']);
         
@@ -128,21 +159,12 @@ for ($attempt = 1; $attempt <= $max_attempts; $attempt++) {
             $log_func("  No changes detected.");
         }
         
-        // Prevent accidental cache wipe if a sheet fails to parse
         if (count($current_prices) === 0 && count($old_prices) > 0) {
             $new_cache[$key] = $old_prices;
         } else {
             $new_cache[$key] = $current_prices;
         }
     }
-    
-    // Stop retrying if we found changes, reached max attempts, or it's cron/debug
-    if (!empty($all_changes) || $attempt === $max_attempts || $is_cli || $is_debug) {
-        break; 
-    }
-    
-    $log_func("Attempt $attempt found 0 changes. Waiting $attempt_delay seconds for Google Sheets formulas to recalculate...");
-    sleep($attempt_delay);
 }
 
 // Save updated cache atomically

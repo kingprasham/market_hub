@@ -1,153 +1,91 @@
-/**
- * Google Apps Script – Per-Cell Timestamp Tracker for Market Hub Spot Prices
- *
- * PURPOSE:
- * Records the exact date & time when ANY price cell is edited in the spot
- * price sheets (Non-Ferrous, Minor & Ferro, Steel). The app can then read
- * a designated "Last Updated" cell to show accurate per-sheet timestamps.
- *
- * INSTALL:
- *   1. Open the Non-Ferrous Google Sheet
- *      (https://docs.google.com/spreadsheets/d/1VrCzC-sDcri5hO_TWfpHGx3ua7iaScLAtf-CFwQYBsI)
- *   2. Go to Extensions → Apps Script
- *   3. Delete any existing code and paste this entire file
- *   4. Click the clock icon (Triggers) → Add Trigger:
- *        Function: onSheetEdit
- *        Event source: From spreadsheet
- *        Event type: On edit
- *   5. Save and authorize when prompted
- *
- * HOW IT WORKS:
- * - On every cell edit, it writes the current timestamp to cell A1 of a
- *   hidden sheet called "_timestamps" (auto-created if missing).
- * - Format: "dd-MM-yyyy HH:mm:ss" in IST (Asia/Kolkata).
- * - It also optionally calls the spot_price_monitor webhook for push
- *   notifications (with a 5-second debounce).
- *
- * IMPORTANT FIX (2026-03-21):
- * - Reduced debounce from 30s → 5s so rapid city edits all trigger notifications.
- * - Added 3-second sleep before webhook call so Google Sheets CSV sync catches up.
- * - These fixes ensure ALL cities (not just Delhi) trigger notifications.
- */
+// =========================================================================
+// INSTANT PUSH WEBHOOK FOR MARKET HUB (Non-Ferrous Sheet)
+// =========================================================================
+// REPLACE your entire current Apps Script with this code.
+// This version bypasses Google's slow CSV cache by instantly extracting
+// the live data from the "FOR APP" tab and pushing it securely to your server.
 
-// ─── Configuration ───────────────────────────────────────────────
-var TIMESTAMP_SHEET_NAME = "_timestamps";
-var TIMEZONE = "Asia/Kolkata";
-var DATE_FORMAT = "dd-MM-yyyy HH:mm:ss";
-
-// Webhook (same as the previous script — for push notification triggers)
 var WEBHOOK_URL = "https://mehrgrewal.com/markethub/api/spot_price_monitor.php";
 var CRON_SECRET = "mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC";
-var MIN_INTERVAL_SECONDS = 5; // Reduced from 30 to catch rapid multi-city edits
 
 // ─── Main Trigger ────────────────────────────────────────────────
 function onSheetEdit(e) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
     var editedSheet = e.source.getActiveSheet();
     var editedSheetName = editedSheet.getName();
 
-    // Skip if editing the timestamp sheet itself
-    if (editedSheetName === TIMESTAMP_SHEET_NAME) return;
+    // Ignore edits on the FOR APP tab itself, we only care about source data tabs (e.g. DELHI)
+    if (editedSheetName === "FOR APP" || editedSheetName === "ALL_INDIA_MSG") return;
 
-    var now = new Date();
-    var formattedTime = Utilities.formatDate(now, TIMEZONE, DATE_FORMAT);
+    // Use PropertiesService to debounce rapid consecutive edits (like when typing 3 numbers fast)
+    var now = new Date().getTime();
+    var properties = PropertiesService.getScriptProperties();
+    properties.setProperty('lastEditTime', now.toString());
 
-    // ── Write timestamp to _timestamps sheet ──
-    var tsSheet = ss.getSheetByName(TIMESTAMP_SHEET_NAME);
-    if (!tsSheet) {
-      tsSheet = ss.insertSheet(TIMESTAMP_SHEET_NAME);
-      // Set up headers
-      tsSheet.getRange("A1").setValue("Sheet Name");
-      tsSheet.getRange("B1").setValue("Last Updated");
-      tsSheet.getRange("C1").setValue("Cell Edited");
-      tsSheet.getRange("D1").setValue("Global Last Updated");
-      // Hide the sheet so users don't accidentally edit it
-      tsSheet.hideSheet();
+    // Wait 2.5 seconds to let the user finish their fast edits and formulas to calculate
+    Utilities.sleep(2500);
+    
+    // Only the last edit will trigger the push
+    var lastEdit = parseInt(properties.getProperty('lastEditTime') || "0", 10);
+    if (now === lastEdit) {
+      _executeWebhookPush();
     }
-
-    // Find or create a row for this sheet name
-    var data = tsSheet.getDataRange().getValues();
-    var rowIndex = -1;
-    for (var i = 1; i < data.length; i++) {
-      if (data[i][0] === editedSheetName) {
-        rowIndex = i + 1; // 1-indexed
-        break;
-      }
-    }
-
-    var editedCell = e.range ? e.range.getA1Notation() : "unknown";
-
-    if (rowIndex === -1) {
-      // Append new row
-      var newRow = data.length + 1;
-      tsSheet.getRange(newRow, 1).setValue(editedSheetName);
-      tsSheet.getRange(newRow, 2).setValue(formattedTime);
-      tsSheet.getRange(newRow, 3).setValue(editedCell);
-    } else {
-      // Update existing row
-      tsSheet.getRange(rowIndex, 2).setValue(formattedTime);
-      tsSheet.getRange(rowIndex, 3).setValue(editedCell);
-    }
-
-    // Always update Global Last Updated in D1
-    tsSheet.getRange("D2").setValue(formattedTime);
-
-    Logger.log("Timestamp updated for sheet: " + editedSheetName + " at " + formattedTime);
-
-    // ── Optionally trigger webhook (debounced) ──
-    _callWebhookDebounced(now);
 
   } catch (err) {
-    Logger.log("Error in onSheetEdit: " + err.message);
+    console.error("Error in onSheetEdit: " + err.toString());
   }
 }
 
-// ─── Debounced Webhook Call ──────────────────────────────────────
-function _callWebhookDebounced(now) {
+// ─── Execute POST Push ───────────────────────────────────────────
+function _executeWebhookPush() {
   try {
-    var props = PropertiesService.getScriptProperties();
-    var lastCall = parseInt(props.getProperty("lastWebhookCall") || "0", 10);
-    var nowSeconds = Math.floor(now.getTime() / 1000);
-
-    if (nowSeconds - lastCall < MIN_INTERVAL_SECONDS) {
-      Logger.log("Webhook skipped (debounce: " + (nowSeconds - lastCall) + "s ago)");
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var forAppSheet = ss.getSheetByName("FOR APP");
+    
+    if (!forAppSheet) {
+      console.error("Could not find 'FOR APP' tab!");
       return;
     }
-
-    // Mark the call time BEFORE sleeping so overlapping triggers are also debounced
-    props.setProperty("lastWebhookCall", String(nowSeconds));
-
-    // Wait 3 seconds for Google Sheets to finish syncing the CSV export.
-    // Without this delay, the PHP monitor fetches the sheet BEFORE the new
-    // value is visible in the CSV, so the change is missed for all cities.
-    Utilities.sleep(3000);
-
-    var url = WEBHOOK_URL + "?key=" + CRON_SECRET;
-    var response = UrlFetchApp.fetch(url, {
-      method: "get",
-      muteHttpExceptions: true,
-      followRedirects: true,
-    });
-
-    Logger.log("Webhook called: HTTP " + response.getResponseCode());
+    
+    // Force spreadsheet to calculate all cross-sheet formulas immediately!
+    SpreadsheetApp.flush();
+    
+    // Grab the LIVE data array from the FOR APP tab instantly (0 seconds delay)
+    var data = forAppSheet.getDataRange().getValues();
+    
+    // Convert the 2D array to a CSV string to stay perfectly compatible with the PHP parser
+    var csvLines = [];
+    for (var i = 0; i < data.length; i++) {
+       var rowStr = data[i].map(function(cell) {
+           var str = String(cell);
+           // Simple CSV escaping for commas or quotes
+           if (str.indexOf(',') !== -1 || str.indexOf('"') !== -1 || str.indexOf('\n') !== -1) {
+               str = '"' + str.replace(/"/g, '""') + '"';
+           }
+           return str;
+       });
+       csvLines.push(rowStr.join(","));
+    }
+    var finalCsvString = csvLines.join("\n");
+    
+    // Build the POST payload
+    var payload = {
+      "key": CRON_SECRET,
+      "sheet_type": "non_ferrous",
+      "csv_data": finalCsvString
+    };
+    
+    var options = {
+      "method": "post",
+      "payload": payload,
+      "muteHttpExceptions": true
+    };
+    
+    console.log("Pushing LIVE CSV data to webhook...");
+    var response = UrlFetchApp.fetch(WEBHOOK_URL, options);
+    console.log("Webhook Response: " + response.getContentText());
+    
   } catch (err) {
-    Logger.log("Webhook error: " + err.message);
+    console.error("Error pushing webhook: " + err.toString());
   }
-}
-
-// ─── Manual Test ─────────────────────────────────────────────────
-// Run this from the Apps Script editor to verify everything works
-function testTimestamp() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var fakeEvent = {
-    source: ss,
-    range: ss.getActiveSheet().getRange("A1"),
-  };
-  // Simulate source.getActiveSheet()
-  fakeEvent.source.getActiveSheet = function() {
-    return ss.getSheets()[0];
-  };
-  onSheetEdit(fakeEvent);
-  Logger.log("Test complete. Check _timestamps sheet.");
 }
