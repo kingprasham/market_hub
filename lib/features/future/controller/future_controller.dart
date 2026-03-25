@@ -287,26 +287,31 @@ class FutureController extends GetxController with GetSingleTickerProviderStateM
       
       // Refresh sub-controllers if they are active
       try {
+        final List<Future<void>> refreshes = [];
         if (Get.isRegistered<LondonLMEController>()) {
-          Get.find<LondonLMEController>().refreshData();
+          refreshes.add(Get.find<LondonLMEController>().refreshData());
         }
         if (Get.isRegistered<ChinaSHFEController>()) {
-          Get.find<ChinaSHFEController>().refreshData();
+          refreshes.add(Get.find<ChinaSHFEController>().refreshData());
         }
         if (Get.isRegistered<USComexController>()) {
-          Get.find<USComexController>().refreshData();
+          refreshes.add(Get.find<USComexController>().refreshData());
         }
         if (Get.isRegistered<FxController>()) {
-          Get.find<FxController>().refreshData();
+          refreshes.add(Get.find<FxController>().refreshData());
         }
         if (Get.isRegistered<ReferenceRateController>()) {
-          Get.find<ReferenceRateController>().refreshData();
+          refreshes.add(Get.find<ReferenceRateController>().refreshData());
         }
         if (Get.isRegistered<SettlementController>()) {
-          Get.find<SettlementController>().refreshData();
+          refreshes.add(Get.find<SettlementController>().refreshData());
         }
         if (Get.isRegistered<WarehouseStockController>()) {
-          Get.find<WarehouseStockController>().refreshData();
+          refreshes.add(Get.find<WarehouseStockController>().refreshData());
+        }
+        
+        if (refreshes.isNotEmpty) {
+          await Future.wait(refreshes);
         }
       } catch (e) {
         debugPrint('Error refreshing sub-controllers: $e');

@@ -7,6 +7,10 @@
 define('ADMIN_PANEL', true);
 require_once 'config.php';
 
+// Set headers manually since ADMIN_PANEL prevents config.php from doing it
+header('Access-Control-Allow-Origin: *');
+header('Content-Type: application/json; charset=utf-8');
+
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     api_error('Method not allowed', 405);
 }

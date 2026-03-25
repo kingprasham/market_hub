@@ -301,8 +301,10 @@ class GoogleSheetsService extends GetxService {
   /// Fetch a sheet by GID
   Future<SheetData?> _fetchSheetByGid(String sheetId, String sheetName, String gid) async {
     try {
-      final csvUrl = 'https://docs.google.com/spreadsheets/d/$sheetId/gviz/tq?tqx=out:csv&gid=$gid';
-      debugPrint('Fetching sheet $sheetName from: $csvUrl');
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      // Using /export?format=csv is often more reliable than gviz/tq for updates
+      final csvUrl = 'https://docs.google.com/spreadsheets/d/$sheetId/export?format=csv&gid=$gid&t=$timestamp';
+      debugPrint('Fetching sheet $sheetName matching gid $gid with timestamp $timestamp');
 
       final response = await _dio.get(
         csvUrl,
@@ -933,7 +935,8 @@ class GoogleSheetsService extends GetxService {
   /// Fetch and parse Ferrous data from new sheet
   Future<void> fetchFerrousData() async {
     try {
-      final csvUrl = 'https://docs.google.com/spreadsheets/d/$ferrousSheetId/export?format=csv&gid=1842451283';
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final csvUrl = 'https://docs.google.com/spreadsheets/d/$ferrousSheetId/export?format=csv&gid=1842451283&t=$timestamp';
       debugPrint('Fetching Ferrous data from: $csvUrl');
 
       final response = await _dio.get(
@@ -955,7 +958,8 @@ class GoogleSheetsService extends GetxService {
     try {
       if (minorSheetGid == '0') return;
 
-      final url = 'https://docs.google.com/spreadsheets/d/$minorSheetId/export?format=csv&gid=$minorSheetGid';
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final url = 'https://docs.google.com/spreadsheets/d/$minorSheetId/export?format=csv&gid=$minorSheetGid&t=$timestamp';
       debugPrint('Fetching Minor data from: $url');
       
       final response = await _dio.get(url, options: Options(responseType: ResponseType.plain));
@@ -973,7 +977,8 @@ class GoogleSheetsService extends GetxService {
   /// Fetch and parse Non-Ferrous data from "FOR APP" sheet
   Future<void> fetchNonFerrousData() async {
     try {
-      final url = 'https://docs.google.com/spreadsheets/d/$nonFerrousSheetId/export?format=csv&gid=$nonFerrousSheetGid';
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final url = 'https://docs.google.com/spreadsheets/d/$nonFerrousSheetId/export?format=csv&gid=$nonFerrousSheetGid&t=$timestamp';
       debugPrint('Fetching Non-Ferrous data from: $url');
 
       final response = await _dio.get(
@@ -1807,10 +1812,8 @@ class GoogleSheetsService extends GetxService {
   final lmeC3MData = <String, double>{}.obs;
 
   Future<void> fetchFuturesData() async {
-    // Only show loading if key futures data is missing
-    if (lmeWarehouseData.isEmpty && settlementData.isEmpty) {
-      isLoading.value = true;
-    }
+    // Show loading to provide feedback during refreshes
+    isLoading.value = true;
     try {
       // Parse the new sheet directly
       final sheet = await _fetchSheetByGid(futuresSheetId, 'FUTURES', futuresSheetGid);
@@ -1830,20 +1833,31 @@ class GoogleSheetsService extends GetxService {
       final data = <LmeWarehouseModel>[];
 
       // Extract date from header rows
-      // The date value (e.g. "10-03-2026") can appear anywhere in the first few rows.
-      // We scan for a cell that looks like a date (dd-mm-yyyy or dd.mm.yyyy).
+      // User confirmed: "in warehouse the k and l column one is the date, the n column date is for settlement"
+      // Column K = index 10, Column L = index 11
+      String? foundDate;
       final datePattern = RegExp(r'\d{1,2}[-./\\]\d{1,2}[-./\\]\d{2,4}');
+      
       for (int i = 0; i < sheet.rows.length && i < 5; i++) {
         final row = sheet.rows[i];
-        for (int j = 0; j < row.length; j++) {
-          final cell = row[j].trim();
-          final match = datePattern.firstMatch(cell);
-          if (match != null) {
-            warehouseDate.value = match.group(0) ?? cell;
-            break;
+        
+        // Prioritize Column K (10) and L (11) as they are the Warehouse specific dates
+        final indicesToCheck = [10, 11, 9, 12, 13]; // Search K, L then others
+        for (final j in indicesToCheck) {
+          if (j < row.length) {
+            final cell = row[j].trim();
+            final match = datePattern.firstMatch(cell);
+            if (match != null) {
+              foundDate = match.group(0) ?? cell;
+              break;
+            }
           }
         }
-        if (warehouseDate.value.isNotEmpty) break;
+        if (foundDate != null) break;
+      }
+      
+      if (foundDate != null) {
+        warehouseDate.value = foundDate;
       }
       
       // Look for C3M data across ALL rows first (Column Z = index 25, Column AE = index 30)

@@ -29,31 +29,21 @@ class SettlementController extends GetxController {
     }
     
     ever(sheetsService.isLoading, (loading) {
-      if (loading) {
-        if (settlementData.isEmpty) {
-          isLoading.value = true;
-        }
-      } else {
-        isLoading.value = false;
-      }
+      isLoading.value = loading;
     });
 
-    _startAutoRefresh(); // Start auto-refresh on init
+    // Parent FutureController handles periodic refreshes for all sub-tabs.
+    // Local timer is redundant and causes overlapping requests.
   }
 
   @override
   void onClose() {
-    _refreshTimer?.cancel(); // Cancel timer on close
     super.onClose();
   }
 
   Future<void> refreshData() async {
     final sheetsService = Get.find<GoogleSheetsService>();
     await sheetsService.fetchFuturesData();
-  }
-
-  void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) => refreshData()); // Calls refreshData
   }
 
   /// Fetch historical data for a specific metal

@@ -19,6 +19,10 @@ class WarehouseStockController extends GetxController {
     lmeData.bindStream(sheetsService.lmeWarehouseData.stream);
     warehouseDate.bindStream(sheetsService.warehouseDate.stream);
     
+    // Parent FutureController handles periodic refreshes for all sub-tabs,
+    // and GoogleSheetsService has its own global refresh timer.
+    // Local timer is redundant and causes overlapping requests.
+    
     // Initial sync
     if (sheetsService.lmeWarehouseData.isNotEmpty) {
       lmeData.value = sheetsService.lmeWarehouseData;
@@ -27,18 +31,10 @@ class WarehouseStockController extends GetxController {
       warehouseDate.value = sheetsService.warehouseDate.value;
     }
     
-    // Start auto-refresh
-    _startAutoRefresh(); // Call the new method
     
     // Listen to loading state
     ever(sheetsService.isLoading, (loading) {
-      if (loading) {
-        if (lmeData.isEmpty) {
-          isLoading.value = true;
-        }
-      } else {
-        isLoading.value = false;
-      }
+      isLoading.value = loading;
     });
   }
 
@@ -48,9 +44,7 @@ class WarehouseStockController extends GetxController {
     super.onClose();
   }
 
-  void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) => refreshData()); // Use refreshData
-  }
+  // Removed redundant _startAutoRefresh timer
 
   Future<void> refreshData() async {
     final sheetsService = Get.find<GoogleSheetsService>();

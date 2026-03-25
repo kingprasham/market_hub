@@ -157,117 +157,121 @@ class AlertsController extends GetxController {
 
   /// Fetch all content from Admin API
   Future<void> _fetchFromAdminApi({bool silent = false}) async {
+    int newNewsCount = 0;
+    int newHindiCount = 0;
+    int newCircularsCount = 0;
+
+    // 1. Fetch English news
     try {
-      // Fetch English news from admin API
       final englishNewsData = await _adminApiService!.getNews();
-      int newNewsCount = 0;
-      if (englishNewsData.isNotEmpty) {
-        final newsList = englishNewsData.map((json) {
-          final newsItem = NewsModel.fromJson(json);
-          // Ensure newsType is set correctly if not in JSON
-          return NewsModel(
-            id: newsItem.id,
-            title: newsItem.title,
-            description: newsItem.description,
-            imageUrl: newsItem.imageUrl,
-            pdfUrl: newsItem.pdfUrl,
-            sourceLink: newsItem.sourceLink,
-            newsType: 'news',
-            targetPlanIds: newsItem.targetPlanIds,
-            publishedAt: newsItem.publishedAt,
-            createdAt: newsItem.createdAt,
-          );
-        }).toList();
-
-        newNewsCount = _previousNewsCount > 0 && newsList.length > _previousNewsCount
-            ? newsList.length - _previousNewsCount
-            : 0;
-
-        news.assignAll(newsList);
-        _previousNewsCount = newsList.length;
-        debugPrint('Loaded ${newsList.length} English news from Admin API');
-      }
-
-      // Fetch Hindi news from admin API
-      final hindiNewsData = await _adminApiService!.getHindiNews();
-      int newHindiCount = 0;
-      if (hindiNewsData.isNotEmpty) {
-        final hindiNewsList = hindiNewsData.map((json) {
-          final newsItem = NewsModel.fromJson(json);
-          return NewsModel(
-            id: newsItem.id,
-            title: newsItem.title,
-            description: newsItem.description,
-            imageUrl: newsItem.imageUrl,
-            pdfUrl: newsItem.pdfUrl,
-            sourceLink: newsItem.sourceLink,
-            newsType: 'hindi_news',
-            targetPlanIds: newsItem.targetPlanIds,
-            publishedAt: newsItem.publishedAt,
-            createdAt: newsItem.createdAt,
-          );
-        }).toList();
-
-        newHindiCount = _previousHindiNewsCount > 0 && hindiNewsList.length > _previousHindiNewsCount
-            ? hindiNewsList.length - _previousHindiNewsCount
-            : 0;
-
-        hindiNews.assignAll(hindiNewsList);
-        _previousHindiNewsCount = hindiNewsList.length;
-        debugPrint('Loaded ${hindiNewsList.length} Hindi news from Admin API');
-      }
-
-      // Fetch circulars from admin API
-      final circularsData = await _adminApiService!.getCirculars();
-      int newCircularsCount = 0;
-      if (circularsData.isNotEmpty) {
-        final circularsList = circularsData.map((json) {
-          final newsItem = NewsModel.fromJson(json);
-          return NewsModel(
-            id: newsItem.id,
-            title: newsItem.title,
-            description: newsItem.description,
-            imageUrl: newsItem.imageUrl,
-            pdfUrl: newsItem.pdfUrl,
-            newsType: 'circular',
-            targetPlanIds: newsItem.targetPlanIds,
-            publishedAt: newsItem.publishedAt,
-            createdAt: newsItem.createdAt,
-          );
-        }).toList();
-
-        newCircularsCount = _previousCircularsCount > 0 && circularsList.length > _previousCircularsCount
-            ? circularsList.length - _previousCircularsCount
-            : 0;
-
-        circulars.assignAll(circularsList);
-        _previousCircularsCount = circularsList.length;
-        debugPrint('Loaded ${circularsList.length} circulars from Admin API');
-      }
-
-      // Show toast if new content is available (not on initial load or silent refresh)
-      final totalNewItems = newNewsCount + newHindiCount + newCircularsCount;
-      if (totalNewItems > 0 && !silent) {
-        final categories = <String>[];
-        if (newNewsCount > 0) categories.add('$newNewsCount News');
-        if (newHindiCount > 0) categories.add('$newHindiCount Hindi');
-        if (newCircularsCount > 0) categories.add('$newCircularsCount Circular');
-
-        Get.snackbar(
-          'New Content Available',
-          categories.join(', '),
-          snackPosition: SnackPosition.TOP,
-          duration: const Duration(seconds: 3),
-          backgroundColor: Get.theme.colorScheme.primary,
-          colorText: Get.theme.colorScheme.onPrimary,
+      final newsList = englishNewsData.map((json) {
+        final newsItem = NewsModel.fromJson(json);
+        return NewsModel(
+          id: newsItem.id,
+          title: newsItem.title,
+          description: newsItem.description,
+          imageUrl: newsItem.imageUrl,
+          pdfUrl: newsItem.pdfUrl,
+          sourceLink: newsItem.sourceLink,
+          newsType: 'news',
+          targetPlanIds: newsItem.targetPlanIds,
+          publishedAt: newsItem.publishedAt,
+          createdAt: newsItem.createdAt,
         );
-      }
+      }).toList();
+
+      newNewsCount = _previousNewsCount > 0 && newsList.length > _previousNewsCount
+          ? newsList.length - _previousNewsCount
+          : 0;
+
+      news.assignAll(newsList);
+      _previousNewsCount = newsList.length;
+      debugPrint('Loaded ${newsList.length} English news from Admin API');
     } catch (e) {
-      debugPrint('Error fetching from Admin API: $e');
-      // Only fallback if we have NO data at all
-      if (news.isEmpty && hindiNews.isEmpty) {
-        await _fetchFromFallbackSources();
-      }
+      debugPrint('Error fetching English news: $e');
+    }
+
+    // 2. Fetch Hindi news
+    try {
+      final hindiNewsData = await _adminApiService!.getHindiNews();
+      final hindiNewsList = hindiNewsData.map((json) {
+        final newsItem = NewsModel.fromJson(json);
+        return NewsModel(
+          id: newsItem.id,
+          title: newsItem.title,
+          description: newsItem.description,
+          imageUrl: newsItem.imageUrl,
+          pdfUrl: newsItem.pdfUrl,
+          sourceLink: newsItem.sourceLink,
+          newsType: 'hindi_news',
+          targetPlanIds: newsItem.targetPlanIds,
+          publishedAt: newsItem.publishedAt,
+          createdAt: newsItem.createdAt,
+        );
+      }).toList();
+
+      newHindiCount = _previousHindiNewsCount > 0 && hindiNewsList.length > _previousHindiNewsCount
+          ? hindiNewsList.length - _previousHindiNewsCount
+          : 0;
+
+      hindiNews.assignAll(hindiNewsList);
+      _previousHindiNewsCount = hindiNewsList.length;
+      debugPrint('Loaded ${hindiNewsList.length} Hindi news from Admin API');
+    } catch (e) {
+      debugPrint('Error fetching Hindi news: $e');
+    }
+
+    // 3. Fetch circulars
+    try {
+      final circularsData = await _adminApiService!.getCirculars();
+      final circularsList = circularsData.map((json) {
+        final newsItem = NewsModel.fromJson(json);
+        return NewsModel(
+          id: newsItem.id,
+          title: newsItem.title,
+          description: newsItem.description,
+          imageUrl: newsItem.imageUrl,
+          pdfUrl: newsItem.pdfUrl,
+          newsType: 'circular',
+          targetPlanIds: newsItem.targetPlanIds,
+          publishedAt: newsItem.publishedAt,
+          createdAt: newsItem.createdAt,
+        );
+      }).toList();
+
+      newCircularsCount = _previousCircularsCount > 0 && circularsList.length > _previousCircularsCount
+          ? circularsList.length - _previousCircularsCount
+          : 0;
+
+      circulars.assignAll(circularsList);
+      _previousCircularsCount = circularsList.length;
+      debugPrint('Loaded ${circularsList.length} circulars from Admin API');
+    } catch (e) {
+      debugPrint('Error fetching circulars: $e');
+    }
+
+    // Fallback if Admin API returns nothing for BOTH news and hindiNews
+    if (news.isEmpty && hindiNews.isEmpty) {
+      debugPrint('No news or Hindi news found in Admin API, trying fallback sources...');
+      await _fetchFromFallbackSources();
+    }
+
+    // Show toast if new content is available (not on initial load or silent refresh)
+    final totalNewItems = newNewsCount + newHindiCount + newCircularsCount;
+    if (totalNewItems > 0 && !silent) {
+      final categories = <String>[];
+      if (newNewsCount > 0) categories.add('$newNewsCount News');
+      if (newHindiCount > 0) categories.add('$newHindiCount Hindi');
+      if (newCircularsCount > 0) categories.add('$newCircularsCount Circular');
+
+      Get.snackbar(
+        'New Content Available',
+        categories.join(', '),
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 3),
+        backgroundColor: Get.theme.colorScheme.primary,
+        colorText: Get.theme.colorScheme.onPrimary,
+      );
     }
   }
 
