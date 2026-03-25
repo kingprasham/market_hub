@@ -14,7 +14,7 @@
 // Prevent direct browser access without secret key
 $is_cli = php_sapi_name() === 'cli';
 if (!$is_cli) {
-    $cron_key = isset($_GET['key']) ? $_GET['key'] : '';
+    $cron_key = isset($_REQUEST['key']) ? $_REQUEST['key'] : '';
     $expected_key = 'mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC'; // Strong 40-char secret
     if ($cron_key !== $expected_key) {
         http_response_code(403);

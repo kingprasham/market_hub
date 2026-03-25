@@ -71,14 +71,18 @@ function onSheetEdit(e) {
       return; // App will detect news change via _timestamps above
     }
 
-    var forAppSheet = ss.getSheetByName("FOR APP");
-    if (!forAppSheet) return;
+    // Grab the LIVE data array from the EDITED sheet instantly
+    var gridData = editedSheet.getDataRange().getValues();
 
-    // Force spreadsheet to calculate all cross-sheet formulas immediately
-    SpreadsheetApp.flush();
+    // Map sheet names to the types expected by spot_price_monitor.php
+    var sheetTypeMap = {
+      "FOR APP STOCK-SETTELMENT-SBI-RBI": "app_unified",
+      "FOR APP": "non_ferrous",
+      "FOR APP MINOR & FERRO": "key_value",
+      "Steel": "key_value"
+    };
 
-    // Grab the LIVE data array from the FOR APP tab instantly
-    var gridData = forAppSheet.getDataRange().getValues();
+    var sheetType = sheetTypeMap[editedSheetName] || "non_ferrous";
 
     // Convert 2D array to CSV string
     var csvLines = [];
@@ -97,7 +101,7 @@ function onSheetEdit(e) {
     // Build POST payload
     var payload = {
       "key": CRON_SECRET,
-      "sheet_type": "non_ferrous",
+      "sheet_type": sheetType,
       "csv_data": csvLines.join("\n")
     };
 
