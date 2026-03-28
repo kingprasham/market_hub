@@ -10,8 +10,8 @@ var TIMESTAMP_SHEET_NAME = "_timestamps";
 var TIMEZONE = "Asia/Kolkata";
 var DATE_FORMAT = "dd-MM-yyyy HH:mm:ss";
 
-var WEBHOOK_URL = "https://mehrgrewal.com/markethub/api/spot_price_monitor.php";
 var CRON_SECRET = "mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC";
+var WEBHOOK_URL = "https://mehrgrewal.com/markethub/api/spot_price_monitor.php?key=" + CRON_SECRET;
 
 // ─── Main Trigger ────────────────────────────────────────────────
 function onSheetEdit(e) {
@@ -66,10 +66,16 @@ function onSheetEdit(e) {
     // ────────────────────────────────────────────────────────
 
     // ─── 2. Instant Webhook Push for Prices ───
-    // If we just edited Hindi News (ALL_INDIA_MSG) or FOR APP, we don't need to push prices
-    if (editedSheetName === "FOR APP" || editedSheetName === "ALL_INDIA_MSG") {
+    // If we just edited Hindi News (ALL_INDIA_MSG), we don't need to push prices
+    // NOTE: "FOR APP" is the non-ferrous price sheet and MUST trigger notifications
+    if (editedSheetName === "ALL_INDIA_MSG") {
       return; // App will detect news change via _timestamps above
     }
+
+    // Wait for Sheets to finish recalculating formulas before reading values
+    // (Google Sheets has a ~3s sync delay after edits; without this sleep we
+    //  capture the old formula results and detect no price change)
+    Utilities.sleep(3000);
 
     // Grab the LIVE data array from the EDITED sheet instantly
     var gridData = editedSheet.getDataRange().getValues();

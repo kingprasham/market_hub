@@ -431,20 +431,30 @@ function str_getcsv_multiline($csv_string) {
  */
 function detect_changes($old_prices, $new_prices, $category_label) {
     $changes = [];
-    
+    $new_keys = 0;
+    $same_val = 0;
+    $sample_new_key = '';
+    $sample_old_key = '';
+
     foreach ($new_prices as $key => $new_val) {
         $old_val = isset($old_prices[$key]) ? $old_prices[$key] : null;
-        
+
+        if ($old_val === null) {
+            $new_keys++;
+            if ($sample_new_key === '') $sample_new_key = $key;
+            continue;
+        }
+
         // Only notify if price existed before AND changed (not first-time load)
-        if ($old_val !== null && $old_val !== $new_val) {
+        if ($old_val !== $new_val) {
             $old_num = parse_price_number($old_val);
             $new_num = parse_price_number($new_val);
-            
+
             // Round to 2 decimal places to avoid noise
             if ($old_num !== null && $new_num !== null && round($old_num, 2) !== round($new_num, 2)) {
                 $parts = explode('|', $key);
                 $city = isset($parts[0]) ? $parts[0] : '';
-                
+
                 // --- CATEGORY OVERRIDE ---
                 // If it's a unified tab, the initial category might be generic (like 'LME Futures')
                 // We override it based on the key prefix (Settlement, Warehouse, Forex)
@@ -452,7 +462,7 @@ function detect_changes($old_prices, $new_prices, $category_label) {
                 if ($city === 'Settlement') $override_label = 'LME Settlement';
                 if ($city === 'Warehouse') $override_label = 'LME Warehouse';
                 if ($city === 'Forex') $override_label = 'Forex';
-                
+
                 $changes[] = [
                     'key'       => $key,
                     'category'  => $override_label,
@@ -462,10 +472,27 @@ function detect_changes($old_prices, $new_prices, $category_label) {
                     'new_price' => $new_val,
                     'direction' => $new_num > $old_num ? 'up' : 'down',
                 ];
+            } else {
+                $same_val++;
             }
+        } else {
+            $same_val++;
         }
     }
-    
+
+    // Log diagnostics when no changes found — helps debug key/format mismatches
+    if (empty($changes)) {
+        $total_new = count($new_prices);
+        $total_old = count($old_prices);
+        // Sample a key from old_prices that is NOT in new_prices
+        foreach ($old_prices as $k => $v) {
+            if (!isset($new_prices[$k])) { $sample_old_key = $k; break; }
+        }
+        error_log("[detect_changes] $category_label: new=$total_new old=$total_old new_keys=$new_keys same=$same_val" .
+            ($sample_new_key ? " | sample_new_key=$sample_new_key" : '') .
+            ($sample_old_key ? " | sample_old_key_not_in_new=$sample_old_key" : ''));
+    }
+
     return $changes;
 }
 
@@ -581,19 +608,21 @@ function clean_section_name($name) {
 
 /**
  * Check if a string is a numeric price
+ * Handles values like "320+", "1,128+", "1208" (the '+' means "and above")
  */
 function is_numeric_price($str) {
     if (empty($str)) return false;
-    $clean = str_replace([',', ' '], '', $str);
+    $clean = str_replace([',', ' ', '+'], '', $str);
     return is_numeric($clean);
 }
 
 /**
  * Parse price string to float
+ * Handles values like "320+", "1,128+", "1208"
  */
 function parse_price_number($str) {
     if (empty($str)) return null;
-    $clean = str_replace([',', ' '], '', $str);
+    $clean = str_replace([',', ' ', '+'], '', $str);
     if (is_numeric($clean)) return floatval($clean);
     return null;
 }

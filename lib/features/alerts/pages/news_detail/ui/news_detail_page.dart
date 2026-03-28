@@ -77,35 +77,59 @@ class NewsDetailPage extends GetView<NewsDetailController> {
 
   Widget _buildHeaderImage() {
     if (controller.newsItem.hasImage) {
-      return Container(
-        height: 250,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: ColorConstants.primaryBlue.withValues(alpha: 0.1),
-        ),
-        child: Image.network(
-          controller.newsItem.imageUrl!,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Center(
-              child: Icon(
-                Icons.image_outlined,
-                size: 64,
-                color: ColorConstants.textSecondary.withValues(alpha: 0.5),
+      return GestureDetector(
+        onTap: () => _openFullScreenImage(controller.newsItem.imageUrl!),
+        child: Container(
+          height: 250,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: ColorConstants.primaryBlue.withValues(alpha: 0.1),
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.network(
+                controller.newsItem.imageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Center(
+                    child: Icon(
+                      Icons.image_outlined,
+                      size: 64,
+                      color: ColorConstants.textSecondary.withValues(alpha: 0.5),
+                    ),
+                  );
+                },
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                          : null,
+                    ),
+                  );
+                },
               ),
-            );
-          },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Center(
-              child: CircularProgressIndicator(
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
-                    : null,
+              Positioned(
+                bottom: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.fullscreen,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
               ),
-            );
-          },
+            ],
+          ),
         ),
       );
     }
@@ -114,6 +138,39 @@ class NewsDetailPage extends GetView<NewsDetailController> {
       height: 200,
       width: double.infinity,
       child: _buildPlaceholder(),
+    );
+  }
+
+  void _openFullScreenImage(String imageUrl) {
+    Get.to(
+      () => Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          iconTheme: const IconThemeData(color: Colors.white),
+          elevation: 0,
+        ),
+        body: Center(
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 5.0,
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => const Icon(
+                Icons.broken_image_outlined,
+                color: Colors.white54,
+                size: 64,
+              ),
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return const CircularProgressIndicator(color: Colors.white);
+              },
+            ),
+          ),
+        ),
+      ),
+      transition: Transition.fade,
     );
   }
 

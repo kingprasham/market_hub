@@ -9,7 +9,7 @@ import '../../../data/models/content/news_model.dart';
 import '../../../app/routes/app_routes.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-class AlertsController extends GetxController {
+class AlertsController extends GetxController with WidgetsBindingObserver {
   final selectedTabIndex = 0.obs;
   final isLoading = true.obs;
   final isRefreshing = false.obs;
@@ -55,6 +55,7 @@ class AlertsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    WidgetsBinding.instance.addObserver(this);
     _initWebControllers();
     _initServices();
     _subscribeToSheetUpdates();
@@ -62,6 +63,20 @@ class AlertsController extends GetxController {
     // Fetch initial data
     _fetchAllNews();
     _startAutoRefresh();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App came back to foreground — refresh news if data is missing or stale
+      if (_adminApiService != null) {
+        if (news.isEmpty && hindiNews.isEmpty) {
+          _fetchAllNews();
+        } else {
+          _fetchFromAdminApi(silent: true);
+        }
+      }
+    }
   }
 
   void _handleArguments() {
@@ -315,6 +330,7 @@ class AlertsController extends GetxController {
 
   @override
   void onClose() {
+    WidgetsBinding.instance.removeObserver(this);
     _wsSubscription?.cancel();
     _autoRefreshTimer?.cancel();
     super.onClose();
