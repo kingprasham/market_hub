@@ -47,3 +47,8 @@ google-services.json
 android/app/google-services.json
 
 .kluster
+
+# FCM service-account credentials — never commit private keys
+admin/api/fcm_service_account.local.json
+tmp/test_pk.php
+

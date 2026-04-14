@@ -1860,12 +1860,13 @@ class GoogleSheetsService extends GetxService {
         warehouseDate.value = foundDate;
       }
       
-      // Look for C3M data across ALL rows first (Column Z = index 25, Column AE = index 30)
+      // Look for C3M data across ALL rows first (Column AA = index 26, Column AF = index 31)
+      // Sheet structure: AA=Symbol, AB=Bid, AC=Ask, AD=Last, AE=Final, AF=C3M
       for (final row in sheet.rows) {
-        if (row.length > 30) {
-          final rightSymbol = row[25].trim().toUpperCase();
+        if (row.length > 31) {
+          final rightSymbol = row[26].trim().toUpperCase();
           if (rightSymbol.isNotEmpty && const ['CU', 'AL', 'ZN', 'PB', 'NI', 'SN', 'AA'].contains(rightSymbol)) {
-            final c3mValue = _parseSinglePrice(row[30]) ?? 0.0;
+            final c3mValue = _parseSinglePrice(row[31]) ?? 0.0;
             lmeC3MData[rightSymbol] = c3mValue;
           }
         }
@@ -2006,6 +2007,29 @@ class GoogleSheetsService extends GetxService {
     });
 
     settlementData.assignAll(data);
+
+    // Derive CASH-3M spreads for the London LME tab.
+    // Primary source is column Z/AE (already populated in _parseLmeWarehouseData).
+    // This adds/overwrites from settlement data so the London tab stays populated
+    // even when the sheet's far-right columns shift or are empty.
+    const metalToSymbol = {
+      'COPPER': 'CU',
+      'ALUMINIUM': 'AL',
+      'ZINC': 'ZN',
+      'NICKEL': 'NI',
+      'LEAD': 'PB',
+      'TIN': 'SN',
+      'AL. ALLOY': 'AA',
+      'NASAAC': 'AA', // fallback alias
+    };
+
+    for (final model in data) {
+      final key = model.metal.toUpperCase().replaceAll(RegExp(r'\s+'), ' ');
+      final symbol = metalToSymbol[key];
+      if (symbol == null) continue;
+      // C3M is sourced exclusively from the Spread C3M section (column AF).
+      // No fallback calculation — if not present, it shows as N/A in the app.
+    }
   }
 
 

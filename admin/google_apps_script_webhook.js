@@ -90,6 +90,31 @@ function onSheetEdit(e) {
 
     var sheetType = sheetTypeMap[editedSheetName] || "non_ferrous";
 
+    // For non_ferrous sheet: detect which city was edited so PHP can filter
+    // changes to only that city (prevents formula-cascaded changes in other cities
+    // from appearing in the notification, e.g. Delhi edit showing Chennai rates).
+    var filterCity = '';
+    if (sheetType === 'non_ferrous' && e.range) {
+      var editedCol = e.range.columnStart - 1; // convert to 0-indexed
+      var colCityMap = {
+        0: 'DELHI',      1: 'DELHI',
+        4: 'MUMBAI',     5: 'MUMBAI',
+        7: 'HYDERABAD',  8: 'HYDERABAD',
+        10: 'AHMEDABAD', 11: 'AHMEDABAD',
+        13: 'PUNE',      14: 'PUNE',
+        16: 'CHENNAI',   17: 'CHENNAI',
+        19: 'JODHPUR',   20: 'JODHPUR',
+        22: 'KOLKATA',   23: 'KOLKATA',
+        25: 'JAMNAGAR',  26: 'JAMNAGAR',
+        28: 'JAGADHRI',  29: 'JAGADHRI',
+        31: 'MORADABAD', 32: 'MORADABAD',
+        34: 'HATHRAS',   35: 'HATHRAS',
+        37: 'JALANDHAR', 38: 'JALANDHAR',
+        40: 'BME',       41: 'BME'
+      };
+      filterCity = colCityMap[editedCol] || '';
+    }
+
     // Convert 2D array to CSV string
     var csvLines = [];
     for (var i = 0; i < gridData.length; i++) {
@@ -108,7 +133,8 @@ function onSheetEdit(e) {
     var payload = {
       "key": CRON_SECRET,
       "sheet_type": sheetType,
-      "csv_data": csvLines.join("\n")
+      "csv_data": csvLines.join("\n"),
+      "filter_city": filterCity
     };
 
     var options = {

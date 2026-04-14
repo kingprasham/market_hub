@@ -88,6 +88,9 @@ foreach ($settings_raw as $row) {
                     <div class="alert alert-info small">
                         <strong>Recommended:</strong> Use Firebase V1 API with Service Account JSON.
                         <br>Get it from: Firebase Console → Project Settings → Service accounts → Generate new private key
+                        <br><strong>⚡ When notifications stop:</strong> paste new JSON below and Save — no file upload needed.
+                        <br><a href="../api/fcm_status.php?key=mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC" target="_blank" class="btn btn-sm btn-outline-primary mt-1">Check FCM Status</a>
+                        <a href="../api/fcm_status.php?key=mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC&fix=1&test=1" target="_blank" class="btn btn-sm btn-outline-success mt-1">Fix &amp; Test FCM</a>
                     </div>
                     
                     <div class="mb-3">

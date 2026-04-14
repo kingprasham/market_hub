@@ -19,7 +19,21 @@
       "Bash(grep -E \"\\\\.php$\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://mehrgrewal.com/markethub/api/spot_price_monitor.php?key=mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC&debug=1\")",
       "Bash(curl -s \"https://mehrgrewal.com/markethub/api/spot_price_monitor.php?key=mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC&debug=1\")",
-      "Bash(curl -s \"https://mehrgrewal.com/markethub/api/spot_price_monitor.php?key=mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC&test_notify=DELHI&debug=1\")"
+      "Bash(curl -s \"https://mehrgrewal.com/markethub/api/spot_price_monitor.php?key=mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC&test_notify=DELHI&debug=1\")",
+      "Bash(curl -s \"https://mehrgrewal.com/markethub/api/read_log.php\")",
+      "Bash(curl -s \"https://mehrgrewal.com/markethub/api/inspect.php\")",
+      "Bash(curl -s \"https://mehrgrewal.com/markethub/api/spot_price_monitor.php?key=mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC&test_notify=MUMBAI&debug=1\")",
+      "Bash(git push:*)",
+      "Skill(gsd:debug)",
+      "Skill(gsd:debug:*)",
+      "Bash(php -l admin/api/config.php)",
+      "Bash(php -l admin/api/fcm_status.php)",
+      "Bash(git check-ignore:*)",
+      "Bash(git config:*)",
+      "Bash(git reset:*)",
+      "Bash(php -l admin/api/spot_price_monitor.php)",
+      "Bash(php -r 'require '\\\\''admin/api/config.php'\\\\''; $j = get_hardcoded_service_account_json\\(\\); echo '\\\\''JSON length: '\\\\''.strlen\\($j\\).PHP_EOL; $sa = json_decode\\($j, true\\); echo '\\\\''project_id: '\\\\''.\\($sa['\\\\''project_id'\\\\''] ?? '\\\\''MISSING'\\\\''\\).PHP_EOL; echo '\\\\''has private_key: '\\\\''.\\(!empty\\($sa['\\\\''private_key'\\\\'']\\) ? '\\\\''YES'\\\\'' : '\\\\''NO'\\\\''\\).PHP_EOL;')",
+      "Bash(php -r '$j = file_get_contents\\('\\\\''admin/api/fcm_service_account.local.json'\\\\''\\); $sa = json_decode\\($j, true\\); echo '\\\\''parsed: '\\\\''.\\(is_array\\($sa\\) ? '\\\\''OK'\\\\'' : '\\\\''FAIL'\\\\''\\).PHP_EOL; echo '\\\\''project_id: '\\\\''.\\($sa['\\\\''project_id'\\\\''] ?? '\\\\''MISSING'\\\\''\\).PHP_EOL; echo '\\\\''has private_key: '\\\\''.\\(!empty\\($sa['\\\\''private_key'\\\\'']\\) ? '\\\\''YES'\\\\'' : '\\\\''NO'\\\\''\\).PHP_EOL; echo '\\\\''key starts with BEGIN: '\\\\''.\\(strpos\\($sa['\\\\''private_key'\\\\''], '\\\\''-----BEGIN'\\\\''\\) === 0 ? '\\\\''YES'\\\\'' : '\\\\''NO'\\\\''\\).PHP_EOL;')"
     ]
   }
 }

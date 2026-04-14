@@ -168,30 +168,57 @@ function verify_auth() {
 }
 
 /**
+ * Returns the fallback service-account JSON string loaded from
+ * `fcm_service_account.local.json` (gitignored so the credential never
+ * lands in version control). Production pulls the real account from the
+ * DB setting `firebase_service_account`; this file is only a local
+ * fallback when the DB setting is missing or invalid.
+ */
+function get_hardcoded_service_account_json() {
+    $path = __DIR__ . '/fcm_service_account.local.json';
+    if (!is_readable($path)) return '';
+    $raw = file_get_contents($path);
+    return $raw !== false ? $raw : '';
+}
+
+/**
+ * Return the active service account array (DB key takes priority over hardcoded).
+ * Used by fcm_status.php to test auth without making a dummy FCM call.
+ */
+function get_active_service_account() {
+    $db_raw = get_setting('firebase_service_account');
+    if (!empty($db_raw)) {
+        $sa = json_decode($db_raw, true);
+        if (is_array($sa) && !empty($sa['project_id']) && !empty($sa['private_key'])) {
+            return $sa;
+        }
+    }
+    $fallback = get_hardcoded_service_account_json();
+    return !empty($fallback) ? json_decode($fallback, true) : null;
+}
+
+/**
  * Send push notification via Firebase Cloud Messaging
  * Supports both Legacy API (server key) and V1 API (service account)
  */
 function send_push_notification($device_token, $title, $body, $data = []) {
     // Try V1 API first (service account JSON)
     $service_account = get_setting('firebase_service_account');
-    
-    // Hardcoded fallback if DB setting is empty
-    if (empty($service_account)) {
-        $service_account = '{
-  "type": "service_account",
-  "project_id": "market-hub-58dca",
-  "private_key_id": "03722d3d8672c046d78eee11ea116a213baacc1a",
-  "private_key": "-----BEGIN PRIVATE KEY-----\\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQD16C/dE7BLvqQ4\\nT03EefA99vz1xugEzoprj3jtaq/ZOxQMl6eSp1lyL+1S36tN8678gcf7YJy/aKtJ\\nDjIVa4xtHQERBl4O5sZKCheRLa6lU/0hKRIIuP/NuoxMKJlGucHi+NDeLBegTFob\\nNf7KNfhG94kxz6VK0zxqiX2fQdgzaLHIQebzFIKuts5d5J1KgMcvc4AEJYNPQ+88\\nr7XYwcSVRtmKuhFWy8CzjiSZ/zscLWnv1NPnA80cBKQSVB0sEeRnIZMTO3gyEQ66\\nTGweqm6hwgE+3hAuuvusK6HBxw3on0vV7zli0kTnjij1AsMQiASjOFes4BPXrxvd\\nd1Q+ANOJAgMBAAECggEAP4e2geu5wr/khmW6pjWIo0Ghtc+nFsLTkRlWeSP0fW9d\\nbSlrEiDpI26NZjlB9RgtT7Ap3eBmbq8YfX3M46rO80uogGEAQOJPPUahMxE1yyHJ\\nRl1petZsxBZbc7uTaenI1R5KO/PxQKkpKFmJU22hEJiYGcXXIt8y/yU5TsFAnXr/\\nuaMPKJIN4OuWPTsH4e1Mn2En6G6u02SOWWExVpdhzRE+GpgL5vmdoGT0MLu7Ov/C\\n8qKUKTkZTEpKCORIVMKo/hQNHxnOrm+3ohlVckPGYRS4lFwDiJc3lmcznT6DG1kq\\n4E1gvPTMIt2i4An7Z3hAwG+alpujmbL5UV02SbyeDwKBgQD8wU98NTKJesswQDF+\\nTrUiO0etkw8k1NBl8tmH1tKkFV71twR0TA9Nd44iQHMR39XiakmOAQhLpTw3tvWa\\n8nMA95lsnia+AivQQxEhqtmeSZ9s8JwOCpFDm4iqM2XrZFqcZPK6e49J1j0YzStH\\n3BSZkzZmf2WwKHrQ4m4FhTRowwKBgQD5EF6rfXY5LML++8Jj6FdXrn7DvngH+iOt\\nfG8qY796i8oOXH7ZixRwHpsk4WZNQUlDw5pGYKzeGreqacYD3mNjbaQmIzVnhCTt\\nZX00ZhVnA8Xewv0Kj7ansEBbEz4HboeOexMsuuRnwtNv4jeqmTTbXoECEh2O/WMp\\n8kgVF/5twwKBgDJWXXojLhlrNyQ45KJ/Elvq6m+LJizzpT1ojCIdin3bM7pD5MM0\\nkqee89OmekRJC9O3z0ZUtk46bi+6ZFejiXvb09Zp+NVGoWsssDDAUe7QQsvzb2Ds\\ngdmxFBqxec7Tgag8AotZKERQQoK5+bCqCAA97Uuke6AFr9ACCF9ZFAL5AoGARCXi\\ngXHWw1YoFLS2P7f3DhrEvLKFDUm4MWP21tZsMg/FvaA5ZTTU5si5EqJJ56GRdmUy\\n9UbGhg8xagN/FtfmwfHiFD1WA3j40awPUiMMgB9cKNOZgSZJiCCFu2XMdyQbGzU5\\nzedlT67TQ63WJWu+Nrfo/LQQOmvCkluktYDXMRkCgYA7dWi5WUWs2RMEHAAbaLrO\\n7E/Ruz3rkbYsvj1nKU2YaaiBxupFFG0fFg1SgdcdnjNQTsuH5sfGnSzatGtJMys4\\nxSD8Yzv8UUsPSyB70U33mB6LVPsWlQws5McWNfW7F6WL1VTOOnUeoUECBMFDLIYz\\n0aCA0WZEPtDSB3zXax8nnQ==\\n-----END PRIVATE KEY-----\\n",
-  "client_email": "firebase-adminsdk-fbsvc@market-hub-58dca.iam.gserviceaccount.com",
-  "client_id": "112989263646484850552",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40market-hub-58dca.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
-}';
+
+    // Validate DB setting is real JSON with required fields before trusting it
+    if (!empty($service_account)) {
+        $sa_test = json_decode($service_account, true);
+        if (!is_array($sa_test) || empty($sa_test['project_id']) || empty($sa_test['private_key'])) {
+            error_log("FCM: DB firebase_service_account is non-empty but invalid JSON/missing fields — falling back to hardcoded key");
+            $service_account = '';
+        }
     }
-    
+
+    // Hardcoded fallback if DB setting is empty or invalid
+    if (empty($service_account)) {
+        $service_account = get_hardcoded_service_account_json();
+    }
+
     if (!empty($service_account)) {
         return send_fcm_v1($device_token, $title, $body, $data, $service_account);
     }
@@ -207,20 +234,21 @@ function send_push_notification($device_token, $title, $body, $data = []) {
 
 /**
  * Send via FCM V1 API (recommended)
+ * $retry: internal flag — set false on the retry attempt to prevent infinite loops
  */
-function send_fcm_v1($token, $title, $body, $data, $service_account_json) {
+function send_fcm_v1($token, $title, $body, $data, $service_account_json, $retry = true) {
     $service_account = json_decode($service_account_json, true);
     if (!$service_account) return false;
-    
+
     $project_id = $service_account['project_id'] ?? '';
     if (empty($project_id)) return false;
-    
-    // Get access token from service account
+
+    // Get access token (served from cache when possible)
     $access_token = get_firebase_access_token($service_account);
     if (!$access_token) return false;
-    
+
     $url = "https://fcm.googleapis.com/v1/projects/{$project_id}/messages:send";
-    
+
     // Prepare message payload
     $message_payload = [
         'token' => $token,
@@ -235,19 +263,18 @@ function send_fcm_v1($token, $title, $body, $data, $service_account_json) {
             ]
         ]
     ];
-    
-    // Add data if present, ensuring all values are strings
+
+    // FCM V1 requires all data values to be strings
     if (!empty($data)) {
-        // FCM V1 requires all data values to be strings
         $string_data = [];
         foreach ($data as $key => $value) {
             $string_data[$key] = strval($value);
         }
         $message_payload['data'] = $string_data;
     }
-    
+
     $message = ['message' => $message_payload];
-    
+
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
@@ -263,6 +290,17 @@ function send_fcm_v1($token, $title, $body, $data, $service_account_json) {
     $curl_error = curl_error($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
+
+    // 401 = the cached access token was rejected (key was rotated/revoked while
+    // the token was still in our cache). Clear the cache and retry once with a
+    // fresh token so the NEXT call in the same batch succeeds immediately.
+    if ($http_code === 401 && $retry) {
+        $key_id = preg_replace('/[^a-z0-9]/i', '', $service_account['private_key_id'] ?? 'default');
+        $cache_file = __DIR__ . '/.fcm_token_' . $key_id . '.json';
+        @unlink($cache_file);
+        error_log("FCM V1: got 401, cleared token cache, retrying once...");
+        return send_fcm_v1($token, $title, $body, $data, $service_account_json, false);
+    }
 
     $result = json_decode($response, true);
 
@@ -284,9 +322,30 @@ function base64url_encode($data) {
 }
 
 /**
- * Get Firebase access token from service account
+ * Get Firebase access token from service account.
+ *
+ * Caches the access token on disk for ~58 minutes so that a batch of 50+
+ * notifications issues only ONE JWT sign + ONE OAuth request per hour instead
+ * of one per user. This was causing Google to flag the service account as
+ * abusive and respond with invalid_grant, stopping all notifications.
  */
 function get_firebase_access_token($service_account) {
+    // Cache file is keyed to the private_key_id so that rotating to a new key
+    // automatically bypasses the old token without manual cleanup.
+    $key_id = preg_replace('/[^a-z0-9]/i', '', $service_account['private_key_id'] ?? 'default');
+    $cache_file = __DIR__ . '/.fcm_token_' . $key_id . '.json';
+
+    // Return cached token if it's still valid (with a 2-min buffer)
+    if (file_exists($cache_file)) {
+        $cached = json_decode(file_get_contents($cache_file), true);
+        if (!empty($cached['access_token']) && !empty($cached['expires_at'])) {
+            if ($cached['expires_at'] > time() + 120) {
+                return $cached['access_token'];
+            }
+        }
+    }
+
+    // Build and sign a JWT
     $jwt_header = base64url_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
 
     $now = time();
@@ -301,7 +360,20 @@ function get_firebase_access_token($service_account) {
     $signature_input = $jwt_header . '.' . $jwt_claim;
     $private_key = $service_account['private_key'];
 
-    openssl_sign($signature_input, $signature, $private_key, 'SHA256');
+    // Normalize private key: convert literal \n sequences to real newlines if needed
+    if (strpos($private_key, "\\n") !== false && strpos($private_key, "\n") === false) {
+        $private_key = str_replace("\\n", "\n", $private_key);
+    }
+
+    $sign_ok = openssl_sign($signature_input, $signature, $private_key, 'SHA256');
+    if (!$sign_ok) {
+        $openssl_errors = [];
+        while ($err = openssl_error_string()) {
+            $openssl_errors[] = $err;
+        }
+        error_log("FCM Auth: openssl_sign() FAILED. OpenSSL errors: " . implode('; ', $openssl_errors));
+        return null;
+    }
     $jwt = $signature_input . '.' . base64url_encode($signature);
 
     $ch = curl_init('https://oauth2.googleapis.com/token');
@@ -324,11 +396,22 @@ function get_firebase_access_token($service_account) {
     }
 
     if (isset($response['error'])) {
+        // Delete stale cache on auth failure so the next attempt retries cleanly
+        @unlink($cache_file);
         error_log("FCM Auth error: " . json_encode($response['error']));
         return null;
     }
 
-    return $response['access_token'] ?? null;
+    $access_token = $response['access_token'] ?? null;
+    if ($access_token) {
+        // Cache for 58 minutes (tokens are valid 60 min; 2-min buffer already handled above)
+        file_put_contents($cache_file, json_encode([
+            'access_token' => $access_token,
+            'expires_at'   => time() + 3480
+        ]));
+    }
+
+    return $access_token;
 }
 
 /**
@@ -412,8 +495,11 @@ function send_push_to_all($title, $body, $data = [], $target_plans = null) {
                 $error_code = isset($result['error']['status']) ? $result['error']['status'] : '';
             }
             
-            if ($error_code === 'NOT_FOUND' || $error_code === 'UNREGISTERED' || $error_code === 'INVALID_ARGUMENT') {
-                // Token is stale — user uninstalled app or token expired
+            if ($error_code === 'NOT_FOUND' || $error_code === 'UNREGISTERED') {
+                // Token is stale — user uninstalled app or FCM token expired
+                // NOTE: do NOT include INVALID_ARGUMENT here — that means the request
+                // payload was malformed (e.g. auth failure), not that the token is bad.
+                // Deleting tokens on INVALID_ARGUMENT wiped 26 valid tokens on 01-Apr-2026.
                 db_query(
                     "UPDATE users SET fcm_token = NULL WHERE id = ?",
                     'i',
@@ -427,9 +513,13 @@ function send_push_to_all($title, $body, $data = [], $target_plans = null) {
                 $sent++;
             } else {
                 $failed++;
+                // Log unexpected FCM response for diagnostics
+                error_log("FCM send_push_to_all: unexpected response for user {$user['id']}: " . json_encode($result));
             }
         } else {
             $failed++;
+            // $result is false — send_push_notification returned false (auth failure or curl error)
+            // The specific error is already logged in send_fcm_v1 / get_firebase_access_token
         }
     }
     

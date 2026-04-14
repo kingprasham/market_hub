@@ -3,7 +3,7 @@
  * Test script for spot_price_monitor.php webhook
  */
 
-$url = "https://mehrgrewal.com/markethub/api/spot_price_monitor.php"; // Adjust as needed
+$url = "https://mehrgrewal.com/markethub/api/spot_price_monitor.php?key=$key"; // Adjust as needed
 $key = "mh_cron_X7k9pL2mN4qR8vW3yB6tJ0fH5dA1sC";
 
 // Sample CSV for app_unified (Warehouse)

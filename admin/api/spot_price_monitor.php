@@ -99,9 +99,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csv_data'], $_POST['s
     $log_func("Webhook triggered via direct POST push...");
     $sheet_type = $_POST['sheet_type'];
     $csv_data = trim($_POST['csv_data']);
+    // filter_city: when set, only report changes for that city.
+    // Prevents formula-cascaded changes in other cities from appearing in notifications
+    // (e.g. editing Delhi shouldn't also notify Chennai if Chennai has Delhi-linked formulas).
+    $filter_city = !empty($_POST['filter_city']) ? strtoupper(trim($_POST['filter_city'])) : null;
     $sheet_key = '';
     $sheet_label = '';
-    
+
     foreach ($SHEETS_TO_MONITOR as $key => $config) {
         if ($config['type'] === $sheet_type) {
             $sheet_key = $key;
@@ -109,20 +113,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csv_data'], $_POST['s
             break;
         }
     }
-    
+
     if ($sheet_key) {
         $current_prices = parse_csv_prices($csv_data, $sheet_type);
         $log_func("  Parsed " . count($current_prices) . " price entries from POST.");
-        
+
         $old_prices = isset($cache[$sheet_key]) ? $cache[$sheet_key] : [];
         $all_changes = detect_changes($old_prices, $current_prices, $sheet_label);
-        
+
+        // Filter to only the edited city for non_ferrous sheets.
+        // This isolates the edit to the city the user actually touched,
+        // ignoring formula-driven changes in other cities.
+        if (!empty($filter_city) && $sheet_type === 'non_ferrous' && !empty($all_changes)) {
+            $before = count($all_changes);
+            $all_changes = array_values(array_filter($all_changes, function($c) use ($filter_city) {
+                return strtoupper($c['city']) === $filter_city;
+            }));
+            $suppressed = $before - count($all_changes);
+            if ($suppressed > 0) {
+                $log_func("  City filter '$filter_city': kept " . count($all_changes) . ", suppressed $suppressed from other cities.");
+            }
+        }
+
         if (!empty($all_changes)) {
             $log_func("  Found " . count($all_changes) . " price changes!");
         } else {
             $log_func("  No changes detected.");
         }
-        
+
         if (count($current_prices) > 0) {
             $new_cache[$sheet_key] = $current_prices;
         }
