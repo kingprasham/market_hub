@@ -153,8 +153,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['csv_data'], $_POST['s
     $new_cache = [];
     
     foreach ($SHEETS_TO_MONITOR as $key => $sheet_config) {
+        // non_ferrous is managed exclusively by the Apps Script webhook (POST path).
+        // The cron's direct CSV export produces a different row count than the
+        // Apps Script CSV (quoted multi-line rows differ), so cron updates drop
+        // Mumbai/other keys from cache, causing subsequent webhook POSTs to see
+        // them as "new keys" and skip change detection entirely.
+        if ($key === 'non_ferrous') {
+            if (isset($cache[$key])) $new_cache[$key] = $cache[$key];
+            $log_func("Skipping non_ferrous via GET (managed by Apps Script webhook).");
+            continue;
+        }
+
         $log_func("Checking sheet via GET/Cron: {$sheet_config['label']} ($key)");
-        
+
         $csv_data = fetch_sheet_csv($sheet_config['id'], $sheet_config['gid']);
         if ($csv_data === null) {
             $log_func("  Failed to fetch $key sheet, skipping.");
